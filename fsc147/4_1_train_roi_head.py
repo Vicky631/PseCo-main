@@ -17,6 +17,7 @@ import torchvision
 import torchvision.ops as vision_ops
 from ops.ops import _nms, plot_results, convert_to_cuda
 
+# 命令行参数定义
 import argparse
 
 parser = argparse.ArgumentParser('Default arguments for training of different methods')
@@ -26,7 +27,7 @@ parser.add_argument('--arch', help='arch: vitb, vitl, vith', type=str, default='
 parser.add_argument('--entity', help='wandb user name', type=str, default='zzhuang')
 opts = parser.parse_args()
 print(opts)
-
+# 数据集注册和初始化
 from detectron2.data.datasets import register_coco_instances
 
 register_coco_instances("fsc_test_val", {}, f"{project_root}/data/fsc147/instances_test_val_bin.json",
@@ -37,6 +38,7 @@ torch.autograd.set_grad_enabled(False)
 from ops.foundation_models.segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor, \
     build_sam, build_sam_vit_b, build_sam_vit_h
 
+# 模型加载
 # sam = build_sam_vit_b().cuda().eval()
 # all_data = torch.load(f'{project_root}/data/fsc147/sam/all_data_vitb.pth', map_location='cpu')
 # all_predictions = torch.load(f'{project_root}/data/fsc147/sam/all_predictions_vitb.pth', map_location='cpu')
@@ -49,7 +51,7 @@ if opts.arch == 'vith':
 else:
     raise NotImplementedError
 
-# load text prompts and pseudo labels
+# 加载CLIP文本提示和伪标签
 clip_text_prompts = torch.load(f'{project_root}/data/fsc147/clip_text_prompt.pth', map_location='cpu')
 all_pseudo_boxes = torch.load(f'{project_root}/data/fsc147/sam/pseudo_boxes_data_vith.pth', map_location='cpu')
 for fname in tqdm.tqdm(all_data):
@@ -59,6 +61,7 @@ for fname in tqdm.tqdm(all_data):
     if all_data[fname]['split'] == 'train':
         target['annotations']['boxes'] = all_pseudo_boxes[fname]['pred_boxes']
         target['annotations']['ious'] = all_pseudo_boxes[fname]['pred_ious']
+#数据集划分
 all_image_list = {'train': [], 'val': [], 'test': [], 'all': []}
 for fname in all_data:
     all_image_list[all_data[fname]['split']].append(fname)
@@ -72,6 +75,7 @@ if opts.zeroshot:
     run_name += '_zeroshot'
 cls_loss2_weight = 1.0
 
+# 训练器初始化
 from ops.loggerx import LoggerX
 
 logger = LoggerX(save_root=f'{project_root}/data/fsc147/checkpoints/cls_head/ckpt/{run_name}',
@@ -87,7 +91,7 @@ optimizer = torch.optim.AdamW(list(cls_head.parameters()), lr=0.0001, weight_dec
 acc_grd_step = 1
 max_iter = 10000
 bs = 32
-
+# 混合精度训练设置
 from ops.grad_scaler import NativeScalerWithGradNormCount
 
 amp = True
@@ -95,6 +99,17 @@ scaler = NativeScalerWithGradNormCount(amp=amp)
 
 
 def evaluate(split, results, threshold=None):
+    """
+    评估模型在指定数据集上的性能
+
+    Args:
+        split (str): 数据集划分，如 'train', 'val', 'test'
+        results (dict): 存储评估结果的字典
+        threshold (float, optional): 用于计数评估的阈值，默认为None
+
+    Returns:
+        dict: 包含评估指标的字典，包括bbox指标和计数指标(MAE, RMSE, NAE, SRE)
+    """
     image_list = [fname for fname in all_data if all_data[fname]['split'] == split]
     from detectron2.evaluation import COCOEvaluator
 
@@ -164,6 +179,15 @@ def evaluate(split, results, threshold=None):
         results[split + '_' + k] = detection_results['bbox'][k]
 
     def eval_counting(thresh):
+        """
+        计算计数评估指标
+
+        Args:
+            thresh (float): 用于判断目标的阈值
+
+        Returns:
+            tuple: (mae, mse, nae, sre) - 平均绝对误差、均方根误差、归一化平均误差、平方相对误差
+        """
         total_mae = 0.
         total_mse = 0.
         total_nae = 0.
@@ -203,6 +227,7 @@ def evaluate(split, results, threshold=None):
     return results
 
 
+# 主训练循环：迭代训练模型，每1000次迭代进行一次验证和测试评估
 for n_iter in range(1, max_iter + 1):
     cls_head.train()
 
@@ -213,7 +238,7 @@ for n_iter in range(1, max_iter + 1):
     pos_ratios = 0.25
     anchor_boxes = []
     query_features, query_labels = [], []
-
+    # 训练阶段
     for t in targets:
 
         fname = t['image_id']
@@ -272,6 +297,7 @@ for n_iter in range(1, max_iter + 1):
                                      rand_indices].split(1, dim=0)]
     clip_query_labels = torch.cat(clip_query_labels)
 
+    # 计算损失
     with torch.autograd.set_grad_enabled(True) and torch.autocast(device_type='cuda', enabled=amp):
 
         cls_outs = cls_head(features, anchor_boxes, query_features)
@@ -289,6 +315,7 @@ for n_iter in range(1, max_iter + 1):
 
         update_params = (n_iter % acc_grd_step == 0)
         loss = loss / acc_grd_step
+        # 反向传播
         scaler(loss, optimizer=optimizer, update_grad=update_params)
 
     batch_pos_ratio = (query_labels == 1).sum() / ((query_labels == 1).sum() + (query_labels == 0).sum())
@@ -303,3 +330,4 @@ for n_iter in range(1, max_iter + 1):
         evaluate('test', results, results['THRESH'])
         logger.checkpoints(n_iter)
         logger.msg(results, n_iter)
+
