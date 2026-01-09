@@ -1,0 +1,2 @@
+nohup python 1_generate_data.py > generate_data.log 2>&1 &
+tail -n 100 generate_data.log

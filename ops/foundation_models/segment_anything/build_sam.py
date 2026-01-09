@@ -11,7 +11,7 @@ from functools import partial
 from .modeling import ImageEncoderViT, MaskDecoder, PromptEncoder, Sam, TwoWayTransformer
 
 
-def build_sam_vit_h(checkpoint="/home/zy/wjj/Prompt_sam_localization/checkpoint/sam_vit_h_4b8939.pth"):
+def build_sam_vit_h(checkpoint=None):
     return _build_sam(
         name='vit_h',
         encoder_embed_dim=1280,

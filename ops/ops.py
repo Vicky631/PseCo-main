@@ -1,5 +1,5 @@
 import math
-
+import os
 import torchvision.transforms
 from torch import nn
 import torch
@@ -43,7 +43,7 @@ def _nms(heat, kernel=3):
 
 
 def plot_results(image, masks: torch.Tensor = None, points: torch.Tensor = None, bboxes: torch.Tensor = None,
-                 show_num=False, alpha=0.35):
+                 show_num=False, alpha=0.35, save_path=None):
     plt.imshow(image)
 
     if masks is not None:
@@ -81,6 +81,12 @@ def plot_results(image, masks: torch.Tensor = None, points: torch.Tensor = None,
                     texts = texts[indices.cpu().numpy()]
                 plt.text(points[i, 0], points[i, 1], texts[i], )
 
+    # 在这里添加保存功能
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()  # 关闭图形以释放内存
+    else:
+        plt.show()  # 如果没有指定保存路径，则显示图形
 
 class DeNormalize(object):
     def __init__(self, mean, std):

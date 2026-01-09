@@ -4,39 +4,38 @@
 # ----------------------------------------------------------------
 # @File Description: 基于SAM(Segment Anything Model-ViT-H)与CLIP(ViT-B/32)实现FSC147稠密目标计数数据集的全流程预处理，完成数据集标注校验、图像预处理、SAM图像特征提取、目标候选框生成、高质量伪标签构建、CLIP跨模态图像/文本特征提取，为后续稠密目标计数模型训练提供全量预处理数据，全程为推理流程，基于GPU加速，无模型训练步骤。
 # @Input:
-# 1. 图像数据: /home/zy/wjj/PseCo-main/data/fsc147/images_384_VarV2/ 下的FSC147数据集JPG格式原始图像；
-# 2. 标注文件: /home/zy/wjj/PseCo-main/data/fsc147/annotation_FSC147_384_with_gt.json，包含图像宽高、类别名、目标标注点、示例框、真实计数的json标注；
+# 1. 图像数据: /mnt/mydisk/wjj/PseCo-main/data/fsc147/images_384_VarV2/ 下的FSC147数据集JPG格式原始图像；
+# 2. 标注文件: /mnt/mydisk/wjj/PseCo-main/data/fsc147/annotation_FSC147_384_with_gt.json，包含图像宽高、类别名、目标标注点、示例框、真实计数的json标注；
 # 3. 预训练模型: SAM-ViT-H分割模型、CLIP-ViT-B/32跨模态匹配模型。
 # @Output:
-# 1. /home/zy/wjj/PseCo-main/data/fsc147/sam/all_data_vith.pth: 字典格式，键为图像名，值包含图像缩放后的标注点、示例框、宽高、类别名、SAM图像特征、CLIP示例框图像特征；
-# 2. /home/zy/wjj/PseCo-main/data/fsc147/sam/segment_anything_data_vith.pth: 字典格式，键为图像名，值包含SAM网格点推理后过滤的目标预测框、掩码轮廓中心点、预测IoU置信度；
-# 3. /home/zy/wjj/PseCo-main/data/fsc147/sam/pseudo_boxes_data_vith.pth: 字典格式，键为图像名，值为SAM真实标注点推理生成的高质量目标伪标签边界框；
-# 4. /home/zy/wjj/PseCo-main/data/fsc147/clip_text_prompt.pth: 字典格式，键为数据集类别名，值为对应类别的归一化CLIP文本特征向量(512维)。
+# 1. /mnt/mydisk/wjj/PseCo-main/data/fsc147/sam/all_data_vith.pth: 字典格式，键为图像名，值包含图像缩放后的标注点、示例框、宽高、类别名、SAM图像特征、CLIP示例框图像特征；
+# 2. /mnt/mydisk/wjj/PseCo-main/data/fsc147/sam/segment_anything_data_vith.pth: 字典格式，键为图像名，值包含SAM网格点推理后过滤的目标预测框、掩码轮廓中心点、预测IoU置信度；
+# 3. /mnt/mydisk/wjj/PseCo-main/data/fsc147/sam/pseudo_boxes_data_vith.pth: 字典格式，键为图像名，值为SAM真实标注点推理生成的高质量目标伪标签边界框；
+# 4. /mnt/mydisk/wjj/PseCo-main/data/fsc147/clip_text_prompt.pth: 字典格式，键为数据集类别名，值为对应类别的归一化CLIP文本特征向量(512维)。
 # ----------------------------------------------------------------
 
 import os
 import sys
 
-sys.path.insert(0, '/home/zy/wjj/PseCo-main')
-from torchvision.utils import make_grid
-from torchvision.transforms.functional import to_pil_image, to_tensor
+sys.path.insert(0, '/mnt/mydisk/wjj/PseCo-main')
+from torchvision.transforms.functional import to_tensor
 # get_ipython().run_line_magic('load_ext', 'autoreload')
 # get_ipython().run_line_magic('autoreload', '2')
+import matplotlib
+
+# matplotlib.use('TkAgg')
+matplotlib.use('module://matplotlib_inline.backend_inline')
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
 import torch
 from PIL import Image
 import numpy as np
-import tqdm
 import albumentations as A
-import torch.nn as nn
-import torchvision
 import torchvision.ops as vision_ops
 from ops.foundation_models.segment_anything.utils.amg import batched_mask_to_box
-from ops.ops import _nms, plot_results, convert_to_cuda
+from ops.ops import plot_results
 
 plt.rcParams["figure.dpi"] = 300
-import json
 
 torch.cuda.set_device(0)
 torch.autograd.set_grad_enabled(False)
@@ -46,18 +45,19 @@ torch.autograd.set_grad_enabled(False)
 
 import sys
 
-sys.path.append('/home/zy/wjj/PseCo-main')
+sys.path.append('/mnt/mydisk/wjj/PseCo-main')
 
 import json
 import tqdm
-from ops.foundation_models.segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor, \
-    build_sam, build_sam_vit_b, build_sam_vit_h, build_sam_vit_l
+from ops.foundation_models.segment_anything import build_sam_vit_h
 
 # 初始化SAM模型，使用vit_h版本并移动到GPU上进行推理
-sam = build_sam_vit_h().cuda().eval()
+sam = build_sam_vit_h("/mnt/mydisk/wjj/Prompt_sam_localization/checkpoint/sam_vit_h_4b8939.pth").cuda().eval()
 
 # 定义项目根目录路径
-project_root = '/home/zy/wjj/PseCo-main/'
+project_root = '/mnt/mydisk/wjj/PseCo-main/'
+dataset_root = '/mnt/mydisk/wjj//dataset/FSC_147/'
+save_path = '/mnt/mydisk/wjj/PseCo-main/Output/'
 
 
 def read_image(fname):
@@ -73,7 +73,7 @@ def read_image(fname):
     Returns:
         PIL.Image: 预处理后的图像对象
     """
-    img = Image.open(f'{project_root}/data/fsc147/images_384_VarV2/{fname}')
+    img = Image.open(f'{dataset_root}/images_384_VarV2/{fname}')
     transform = A.Compose([
         A.LongestMaxSize(1024),
         A.PadIfNeeded(1024, border_mode=0, position=A.PadIfNeeded.PositionType.TOP_LEFT),
@@ -83,7 +83,8 @@ def read_image(fname):
 
 
 # 加载FSC147数据集的标注信息
-all_data = json.load(open(f'{project_root}/data/fsc147/annotation_FSC147_384_with_gt.json'))
+# all_data = json.load(open(f'{project_root}/dataset/FSC_147/annotation_FSC_147_384_with_gt.json'))
+all_data = json.load(open(f'{dataset_root}/annotation_FSC147_384_with_gt.json'))
 # 遍历所有数据，对标注信息进行尺度变换以适应1024的最大尺寸
 for fname in tqdm.tqdm(all_data):
     target = all_data[fname]
@@ -93,20 +94,21 @@ for fname in tqdm.tqdm(all_data):
     target['box_examples_coordinates'] = torch.Tensor(target['box_examples_coordinates']).float() * scale
 
 # 加载并显示示例图像及其标注信息
-fname = '2.jpg'
+fname = '4.jpg'
 plot_results(read_image(fname),
              points=all_data[fname]['annotations']['points'],
-             bboxes=all_data[fname]['box_examples_coordinates']
+             bboxes=all_data[fname]['box_examples_coordinates'],
+             save_path=save_path + fname
              )
+
 # ===================== SAM图像编码器生成图像特征向量 =====================
-
-
 import torchvision.transforms as transforms
 
 transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
+
 for fname in tqdm.tqdm(all_data):
     image = read_image(fname)
     with torch.no_grad():
@@ -117,12 +119,16 @@ for fname in tqdm.tqdm(all_data):
 os.makedirs(f'{project_root}/data/fsc147/sam/', exist_ok=True)
 
 # torch.save(all_data, f'{project_root}/data/fsc147/sam/all_data_vitl.pth')
-torch.save(all_data, f'{project_root}/data/fsc147/sam/all_data_vith.pth')
-all_data = torch.load(f'{project_root}/data/fsc147/sam/all_data_vith.pth', map_location='cpu')
+# torch.save(all_data, f'{project_root}/data/fsc147/sam/all_data_vith.pth')
+torch.save(
+    all_data,
+    f'{project_root}/data/fsc147/sam/all_data_vith_v5.pth',
+    pickle_protocol=5  # 关键：指定协议5
+)
 
+# all_data = torch.load(f'{project_root}/data/fsc147/sam/all_data_vith.pth', map_location='cpu')
+# print('加载all_data_vith.pth完毕')
 # ===================== 基于网格点预测mask =====================
-
-
 from ops.foundation_models.segment_anything.utils.amg import build_point_grid, calculate_stability_score
 
 # 1. 设置网格每边的点数，平衡精度和计算效率
@@ -135,6 +141,7 @@ grid_points = build_point_grid(points_per_side)
 segment_anything_data = {}
 
 # 3. 遍历所有数据，对每个图像生成网格点
+print('开始生成网格点')
 for fname in tqdm.tqdm(all_data):
     # features = torch.load('/home/zzhuang/DATASET2/COCO/sam_vith/Org_features/' + fname, map_location='cpu').cuda()
     features = all_data[fname]['features'].cuda()
@@ -150,6 +157,7 @@ for fname in tqdm.tqdm(all_data):
     # 4. 初始化输出变量
     outputs = {}
     # 5. 循环对每个网格点进行预测
+    print('开始预测')
     for indices in torch.arange(len(points)).split(512):
         with torch.no_grad():
             outputs_ = sam.forward_sam_with_embeddings(features, points[indices])
@@ -160,6 +168,7 @@ for fname in tqdm.tqdm(all_data):
             else:
                 outputs[k] = torch.cat([outputs[k], outputs_[k]], dim=0)
     # 预测结果处理
+    print('开始处理预测结果')
     pred_masks = outputs['pred_logits'].view(-1, 256, 256)  # 重塑预测掩码
     stability_scores = calculate_stability_score(pred_masks, 0, 1.)  # 计算稳定性分数
     pred_ious = outputs['pred_ious'].view(-1)  # 获取预测IoU
@@ -239,6 +248,7 @@ fname = list(segment_anything_data)[0]
 plot_results(read_image(fname),
              points=all_data[fname]['annotations']['points'],
              bboxes=segment_anything_data[fname]['pred_boxes'],
+             save_path=save_path+fname
              )
 
 # torch.save(all_data, f'{project_root}/data/fsc147/sam/all_data_vitl.pth')
@@ -246,7 +256,7 @@ plot_results(read_image(fname),
 
 
 # =====================基于真实标注点生成伪标签  =====================
-
+print('开始基于真实标注点生成伪标签')
 pseudo_boxes_data = {}
 for fname in tqdm.tqdm(all_data):
     features = all_data[fname]['features'].cuda()
@@ -296,9 +306,10 @@ torch.save(pseudo_boxes_data, f'{project_root}/data/fsc147/sam/pseudo_boxes_data
 # =====================基于clip提取小样本的图像嵌入 =====================
 # 加载 CLIP模型
 from ops.foundation_models import clip
-
+print('开始基于clip提取小样本的图像嵌入')
 clip.available_models()
-model, preprocess = clip.load("ViT-B/32")
+# model, preprocess = clip.load("ViT-B/32")
+model, preprocess = clip.load(name="ViT-B/32",download_root='/mnt/mydisk/wjj/PseCo-main/ops/foundation_models/clip/')
 model.cuda().eval()
 input_resolution = model.visual.input_resolution
 context_length = model.context_length
@@ -338,7 +349,8 @@ for fname in tqdm.tqdm(all_data):
                                                                                                        boxes.size(0),
                                                                                                        512)
 # =====================基于clip提取全量的文本字典=====================
-
+from easydict import EasyDict
+print('开始基于clip提取全量的文本字典')
 # @title Define hyperparameters
 FLAGS = {
     'prompt_engineering': True,
@@ -347,7 +359,7 @@ FLAGS = {
     'temperature': 100.0,
     'use_softmax': False,
 }
-from easydict import EasyDict
+
 
 FLAGS = EasyDict(FLAGS)
 
