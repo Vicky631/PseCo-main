@@ -1,2 +1,14 @@
 nohup python 1_generate_data.py > generate_data.log 2>&1 &
+
 tail -n 100 generate_data.log
+
+python -u 2_train_heatmap.py 2>&1 | tee -a PseWJJ_train.log
+
+echo $STY
+
+torchrun --nproc_per_node=1 --nnodes=1 --node_rank=0 --master_addr="localhost" --master_port=1234 3_extract_proposals.py 2>&1
+
+history
+
+# 取消该pt文件的暂存状态
+git restore --staged ../ops/foundation_models/clip/ViT-B-32.pt

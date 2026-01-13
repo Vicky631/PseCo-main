@@ -82,224 +82,225 @@ def read_image(fname):
     return img
 
 
-# 加载FSC147数据集的标注信息
-# all_data = json.load(open(f'{project_root}/dataset/FSC_147/annotation_FSC_147_384_with_gt.json'))
-all_data = json.load(open(f'{dataset_root}/annotation_FSC147_384_with_gt.json'))
-# 遍历所有数据，对标注信息进行尺度变换以适应1024的最大尺寸
-for fname in tqdm.tqdm(all_data):
-    target = all_data[fname]
-    scale = 1024 / max(target['width'], target['height'])
-    target['annotations'] = {
-        'points': torch.Tensor([target['annotations'][l]['points'] for l in target['annotations']]).float() * scale}
-    target['box_examples_coordinates'] = torch.Tensor(target['box_examples_coordinates']).float() * scale
-
-# 加载并显示示例图像及其标注信息
-fname = '4.jpg'
-plot_results(read_image(fname),
-             points=all_data[fname]['annotations']['points'],
-             bboxes=all_data[fname]['box_examples_coordinates'],
-             save_path=save_path + fname
-             )
-
-# ===================== SAM图像编码器生成图像特征向量 =====================
-import torchvision.transforms as transforms
-
-transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
-
-for fname in tqdm.tqdm(all_data):
-    image = read_image(fname)
-    with torch.no_grad():
-        new_image = transform(image).unsqueeze(0).cuda()
-        features = sam.image_encoder(new_image)
-    all_data[fname]['features'] = features.cpu()
-
-os.makedirs(f'{project_root}/data/fsc147/sam/', exist_ok=True)
-
-# torch.save(all_data, f'{project_root}/data/fsc147/sam/all_data_vitl.pth')
-# torch.save(all_data, f'{project_root}/data/fsc147/sam/all_data_vith.pth')
-torch.save(
-    all_data,
-    f'{project_root}/data/fsc147/sam/all_data_vith_v5.pth',
-    pickle_protocol=5  # 关键：指定协议5
-)
-
-# all_data = torch.load(f'{project_root}/data/fsc147/sam/all_data_vith.pth', map_location='cpu')
-# print('加载all_data_vith.pth完毕')
-# ===================== 基于网格点预测mask =====================
-from ops.foundation_models.segment_anything.utils.amg import build_point_grid, calculate_stability_score
-
-# 1. 设置网格每边的点数，平衡精度和计算效率
-# points_per_side = 64
-points_per_side = 32
-# points_per_side = 16
-grid_points = build_point_grid(points_per_side)
-
-# 2.初始化结果变量
-segment_anything_data = {}
-
-# 3. 遍历所有数据，对每个图像生成网格点
-print('开始生成网格点')
-for fname in tqdm.tqdm(all_data):
-    # features = torch.load('/home/zzhuang/DATASET2/COCO/sam_vith/Org_features/' + fname, map_location='cpu').cuda()
-    features = all_data[fname]['features'].cuda()
-    h, w = all_data[fname]['height'], all_data[fname]['width']
-    grid_points_ = grid_points.copy()
-    grid_points_[:, 0] = grid_points_[:, 0] * w
-    grid_points_[:, 1] = grid_points_[:, 1] * h
-    scale = 1024 / max(h, w)
-    grid_points_ = grid_points_ * scale
-    points = all_data[fname]['annotations']['points'].cpu().numpy()
-    points = np.concatenate([grid_points_, points], axis=0)
-    points = torch.from_numpy(points).cuda()
-    # 4. 初始化输出变量
-    outputs = {}
-    # 5. 循环对每个网格点进行预测
-    print('开始预测')
-    for indices in torch.arange(len(points)).split(512):
-        with torch.no_grad():
-            outputs_ = sam.forward_sam_with_embeddings(features, points[indices])
-
-        for k in outputs_:
-            if k not in outputs:
-                outputs[k] = outputs_[k]
-            else:
-                outputs[k] = torch.cat([outputs[k], outputs_[k]], dim=0)
-    # 预测结果处理
-    print('开始处理预测结果')
-    pred_masks = outputs['pred_logits'].view(-1, 256, 256)  # 重塑预测掩码
-    stability_scores = calculate_stability_score(pred_masks, 0, 1.)  # 计算稳定性分数
-    pred_ious = outputs['pred_ious'].view(-1)  # 获取预测IoU
-    pred_boxes = outputs['pred_boxes'].view(-1, 4)  # 获取预测边界框
-    pred_masks = (pred_masks > 0.)  # 将掩码二值化
-
-    # 预测结果筛选
-    indices = vision_ops.nms(pred_boxes, pred_ious, 0.7)  # 应用NMS去除重叠框
-    mask = torch.zeros(len(pred_ious)).bool().cuda()
-    mask[indices] = True
-    mask = mask & (stability_scores > 0.95)  # 稳定性阈值过滤
-    mask = mask & (pred_ious > 0.88)  # IoU阈值过滤
-    bboxes = pred_boxes * max(h, w) / 1024  # 将边界框坐标转换到原始图像尺寸
-    bboxes[:, [0, 2]] = bboxes[:, [0, 2]].clamp(0, w)  # 限制x坐标在图像范围内
-    bboxes[:, [1, 3]] = bboxes[:, [1, 3]].clamp(0, h)  # 限制y坐标在图像范围内
-    box_areas = vision_ops.box_area(bboxes)  # 计算边界框面积
-    mask = mask & ((box_areas < (h * w * 0.75)) & (box_areas > 50.))  # 面积范围过滤
-    mask = mask & (((bboxes[:, 3] - bboxes[:, 1]) > 1.) & ((bboxes[:, 2] - bboxes[:, 0]) > 1.))  # 边界框最小尺寸过滤
-
-    pred_masks = pred_masks[mask]
-    pred_boxes = pred_boxes[mask]
-    pred_ious = pred_ious[mask]
-
-    # 基于pred_masks计算中心点
-    contour_center_points = []
-    mask = torch.ones(len(pred_masks)).bool()
-    contour_center_points = []
-    mask = torch.ones(len(pred_masks)).bool()
-    for i in range(len(pred_masks)):
-        m = pred_masks[i].cpu().numpy().astype(np.uint8)  # 转换掩码为numpy数组
-        from ops.foundation_models.segment_anything.utils.amg import remove_small_regions
-
-        # mask = remove_small_regions(mask)
-        min_area = 10
-        m, changed = remove_small_regions(m, min_area, mode="holes")  # 移除小孔洞
-        unchanged = not changed
-        m, changed = remove_small_regions(m, min_area, mode="islands")  # 移除小岛屿
-        unchanged = unchanged and not changed
-        m = m.astype(np.uint8)
-
-        import imutils, cv2
-
-        cnts = cv2.findContours(m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)  # 查找轮廓
-        cnts = imutils.grab_contours(cnts)
-        if len(cnts) == 0:
-            mask[i] = False
-            continue
-        else:
-            cnts = cnts[0] * 4  # 将轮廓坐标放大4倍（对应SAM的下采样比例）
-            M = cv2.moments(cnts)  # 计算轮廓矩
-            if M['m01'] <= 0.0001:
-                mask[i] = False
-                continue
-            cX = int(M["m10"] / (M["m00"] + 0.0001))  # 计算重心x坐标
-            cY = int(M["m01"] / (M["m00"] + 0.0001))  # 计算重心y坐标
-            contour_center_points.append([cX, cY])  # 添加到中心点列表
-
-    contour_center_points = torch.Tensor(contour_center_points)
-    pred_boxes = pred_boxes[mask]
-    pred_ious = pred_ious[mask]
-    segment_anything_data[fname] = {
-        'pred_boxes': pred_boxes.cpu(),
-        'pred_points': contour_center_points.cpu(),
-        'pred_ious': pred_ious.cpu(),
-    }
-    # print(fname)
-    # if fname == '6.jpg':
-    #     break
-    # break
-
-torch.save(segment_anything_data, f'{project_root}/data/fsc147/sam/segment_anything_data_vith.pth')
-
-# 展示SAM预测结果
-# read_image(fname)
-fname = list(segment_anything_data)[0]
-# fname = '2.jpg'
-plot_results(read_image(fname),
-             points=all_data[fname]['annotations']['points'],
-             bboxes=segment_anything_data[fname]['pred_boxes'],
-             save_path=save_path+fname
-             )
-
-# torch.save(all_data, f'{project_root}/data/fsc147/sam/all_data_vitl.pth')
-# torch.save(all_data, f'{project_root}/data/fsc147/sam/all_data_vitr.pth')
-
-
-# =====================基于真实标注点生成伪标签  =====================
-print('开始基于真实标注点生成伪标签')
-pseudo_boxes_data = {}
-for fname in tqdm.tqdm(all_data):
-    features = all_data[fname]['features'].cuda()
-    points = all_data[fname]['annotations']['points'].cuda()
-
-    outputs = {}
-    for indices in torch.arange(len(points)).split(512):
-        with torch.no_grad():
-            outputs_ = sam.forward_sam_with_embeddings(features, points[indices])
-
-        for k in outputs_:
-            if k not in outputs:
-                outputs[k] = outputs_[k]
-            else:
-                outputs[k] = torch.cat([outputs[k], outputs_[k]], dim=0)
-
-    pred_masks = outputs['pred_logits'][torch.arange(len(points)), torch.argmax(outputs['pred_ious'], dim=1)]
-    pred_masks = (pred_masks > 0.)
-    for i in range(len(pred_masks)):
-        m = pred_masks[i].cpu().numpy().astype(np.uint8)
-        from ops.foundation_models.segment_anything.utils.amg import remove_small_regions
-
-        min_area = 10
-        m, changed = remove_small_regions(m, min_area, mode="holes")
-        unchanged = not changed
-        m, changed = remove_small_regions(m, min_area, mode="islands")
-        unchanged = unchanged and not changed
-        m = m.astype(np.uint8)
-        pred_masks[i] = torch.from_numpy(m).bool()
-    pred_boxes = batched_mask_to_box(
-        F.interpolate(pred_masks.unsqueeze(1).float(), size=(1024, 1024)).squeeze(1).bool())
-    pseudo_boxes_data[fname] = pred_boxes.cpu()
-
-# 展示伪标签结果
-# read_image(fname)
-fname = list(pseudo_boxes_data)[0]
-# fname = '2.jpg'
-plot_results(read_image(fname),
-             points=all_data[fname]['annotations']['points'],
-             bboxes=pseudo_boxes_data[fname],
-             )
-
-torch.save(pseudo_boxes_data, f'{project_root}/data/fsc147/sam/pseudo_boxes_data_vith.pth')
+# # 加载FSC147数据集的标注信息
+# # all_data = json.load(open(f'{project_root}/dataset/FSC_147/annotation_FSC_147_384_with_gt.json'))
+# all_data = json.load(open(f'{dataset_root}/annotation_FSC147_384_with_gt.json'))
+# # 遍历所有数据，对标注信息进行尺度变换以适应1024的最大尺寸
+# for fname in tqdm.tqdm(all_data):
+#     target = all_data[fname]
+#     scale = 1024 / max(target['width'], target['height'])
+#     target['annotations'] = {
+#         'points': torch.Tensor([target['annotations'][l]['points'] for l in target['annotations']]).float() * scale}
+#     target['box_examples_coordinates'] = torch.Tensor(target['box_examples_coordinates']).float() * scale
+#
+# # 加载并显示示例图像及其标注信息
+# fname = '4.jpg'
+# plot_results(read_image(fname),
+#              points=all_data[fname]['annotations']['points'],
+#              bboxes=all_data[fname]['box_examples_coordinates'],
+#              save_path=save_path + fname
+#              )
+#
+# # ===================== SAM图像编码器生成图像特征向量 =====================
+# import torchvision.transforms as transforms
+#
+# transform = transforms.Compose([
+#     transforms.ToTensor(),
+#     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+# ])
+#
+# for fname in tqdm.tqdm(all_data):
+#     image = read_image(fname)
+#     with torch.no_grad():
+#         new_image = transform(image).unsqueeze(0).cuda()
+#         features = sam.image_encoder(new_image)
+#     all_data[fname]['features'] = features.cpu()
+#
+# os.makedirs(f'{project_root}/data/fsc147/sam/', exist_ok=True)
+#
+# # torch.save(all_data, f'{project_root}/data/fsc147/sam/all_data_vitl.pth')
+# # torch.save(all_data, f'{project_root}/data/fsc147/sam/all_data_vith.pth')
+# torch.save(
+#     all_data,
+#     f'{project_root}/data/fsc147/sam/all_data_vith_v5.pth',
+#     pickle_protocol=5  # 关键：指定协议5
+# )
+#
+print('开始all_data_vith_v5.pth')
+all_data = torch.load(f'{project_root}/data/fsc147/sam/all_data_vith_v5.pth', map_location='cpu')
+print('加载all_data_vith-v5.pth完毕')
+# # ===================== 基于网格点预测mask =====================
+# from ops.foundation_models.segment_anything.utils.amg import build_point_grid, calculate_stability_score
+#
+# # 1. 设置网格每边的点数，平衡精度和计算效率
+# # points_per_side = 64
+# points_per_side = 32
+# # points_per_side = 16
+# grid_points = build_point_grid(points_per_side)
+#
+# # 2.初始化结果变量
+# segment_anything_data = {}
+#
+# # 3. 遍历所有数据，对每个图像生成网格点
+# print('开始生成网格点')
+# for fname in tqdm.tqdm(all_data):
+#     # features = torch.load('/home/zzhuang/DATASET2/COCO/sam_vith/Org_features/' + fname, map_location='cpu').cuda()
+#     features = all_data[fname]['features'].cuda()
+#     h, w = all_data[fname]['height'], all_data[fname]['width']
+#     grid_points_ = grid_points.copy()
+#     grid_points_[:, 0] = grid_points_[:, 0] * w
+#     grid_points_[:, 1] = grid_points_[:, 1] * h
+#     scale = 1024 / max(h, w)
+#     grid_points_ = grid_points_ * scale
+#     points = all_data[fname]['annotations']['points'].cpu().numpy()
+#     points = np.concatenate([grid_points_, points], axis=0)
+#     points = torch.from_numpy(points).cuda()
+#     # 4. 初始化输出变量
+#     outputs = {}
+#     # 5. 循环对每个网格点进行预测
+#     print('开始预测')
+#     for indices in torch.arange(len(points)).split(512):
+#         with torch.no_grad():
+#             outputs_ = sam.forward_sam_with_embeddings(features, points[indices])
+#
+#         for k in outputs_:
+#             if k not in outputs:
+#                 outputs[k] = outputs_[k]
+#             else:
+#                 outputs[k] = torch.cat([outputs[k], outputs_[k]], dim=0)
+#     # 预测结果处理
+#     print('开始处理预测结果')
+#     pred_masks = outputs['pred_logits'].view(-1, 256, 256)  # 重塑预测掩码
+#     stability_scores = calculate_stability_score(pred_masks, 0, 1.)  # 计算稳定性分数
+#     pred_ious = outputs['pred_ious'].view(-1)  # 获取预测IoU
+#     pred_boxes = outputs['pred_boxes'].view(-1, 4)  # 获取预测边界框
+#     pred_masks = (pred_masks > 0.)  # 将掩码二值化
+#
+#     # 预测结果筛选
+#     indices = vision_ops.nms(pred_boxes, pred_ious, 0.7)  # 应用NMS去除重叠框
+#     mask = torch.zeros(len(pred_ious)).bool().cuda()
+#     mask[indices] = True
+#     mask = mask & (stability_scores > 0.95)  # 稳定性阈值过滤
+#     mask = mask & (pred_ious > 0.88)  # IoU阈值过滤
+#     bboxes = pred_boxes * max(h, w) / 1024  # 将边界框坐标转换到原始图像尺寸
+#     bboxes[:, [0, 2]] = bboxes[:, [0, 2]].clamp(0, w)  # 限制x坐标在图像范围内
+#     bboxes[:, [1, 3]] = bboxes[:, [1, 3]].clamp(0, h)  # 限制y坐标在图像范围内
+#     box_areas = vision_ops.box_area(bboxes)  # 计算边界框面积
+#     mask = mask & ((box_areas < (h * w * 0.75)) & (box_areas > 50.))  # 面积范围过滤
+#     mask = mask & (((bboxes[:, 3] - bboxes[:, 1]) > 1.) & ((bboxes[:, 2] - bboxes[:, 0]) > 1.))  # 边界框最小尺寸过滤
+#
+#     pred_masks = pred_masks[mask]
+#     pred_boxes = pred_boxes[mask]
+#     pred_ious = pred_ious[mask]
+#
+#     # 基于pred_masks计算中心点
+#     contour_center_points = []
+#     mask = torch.ones(len(pred_masks)).bool()
+#     contour_center_points = []
+#     mask = torch.ones(len(pred_masks)).bool()
+#     for i in range(len(pred_masks)):
+#         m = pred_masks[i].cpu().numpy().astype(np.uint8)  # 转换掩码为numpy数组
+#         from ops.foundation_models.segment_anything.utils.amg import remove_small_regions
+#
+#         # mask = remove_small_regions(mask)
+#         min_area = 10
+#         m, changed = remove_small_regions(m, min_area, mode="holes")  # 移除小孔洞
+#         unchanged = not changed
+#         m, changed = remove_small_regions(m, min_area, mode="islands")  # 移除小岛屿
+#         unchanged = unchanged and not changed
+#         m = m.astype(np.uint8)
+#
+#         import imutils, cv2
+#
+#         cnts = cv2.findContours(m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)  # 查找轮廓
+#         cnts = imutils.grab_contours(cnts)
+#         if len(cnts) == 0:
+#             mask[i] = False
+#             continue
+#         else:
+#             cnts = cnts[0] * 4  # 将轮廓坐标放大4倍（对应SAM的下采样比例）
+#             M = cv2.moments(cnts)  # 计算轮廓矩
+#             if M['m01'] <= 0.0001:
+#                 mask[i] = False
+#                 continue
+#             cX = int(M["m10"] / (M["m00"] + 0.0001))  # 计算重心x坐标
+#             cY = int(M["m01"] / (M["m00"] + 0.0001))  # 计算重心y坐标
+#             contour_center_points.append([cX, cY])  # 添加到中心点列表
+#
+#     contour_center_points = torch.Tensor(contour_center_points)
+#     pred_boxes = pred_boxes[mask]
+#     pred_ious = pred_ious[mask]
+#     segment_anything_data[fname] = {
+#         'pred_boxes': pred_boxes.cpu(),
+#         'pred_points': contour_center_points.cpu(),
+#         'pred_ious': pred_ious.cpu(),
+#     }
+#     # print(fname)
+#     # if fname == '6.jpg':
+#     #     break
+#     # break
+#
+# torch.save(segment_anything_data, f'{project_root}/data/fsc147/sam/segment_anything_data_vith.pth')
+#
+# # 展示SAM预测结果
+# # read_image(fname)
+# fname = list(segment_anything_data)[0]
+# # fname = '2.jpg'
+# plot_results(read_image(fname),
+#              points=all_data[fname]['annotations']['points'],
+#              bboxes=segment_anything_data[fname]['pred_boxes'],
+#              save_path=save_path+fname
+#              )
+#
+# # torch.save(all_data, f'{project_root}/data/fsc147/sam/all_data_vitl.pth')
+# # torch.save(all_data, f'{project_root}/data/fsc147/sam/all_data_vitr.pth')
+#
+#
+# # =====================基于真实标注点生成伪标签  =====================
+# print('开始基于真实标注点生成伪标签')
+# pseudo_boxes_data = {}
+# for fname in tqdm.tqdm(all_data):
+#     features = all_data[fname]['features'].cuda()
+#     points = all_data[fname]['annotations']['points'].cuda()
+#
+#     outputs = {}
+#     for indices in torch.arange(len(points)).split(512):
+#         with torch.no_grad():
+#             outputs_ = sam.forward_sam_with_embeddings(features, points[indices])
+#
+#         for k in outputs_:
+#             if k not in outputs:
+#                 outputs[k] = outputs_[k]
+#             else:
+#                 outputs[k] = torch.cat([outputs[k], outputs_[k]], dim=0)
+#
+#     pred_masks = outputs['pred_logits'][torch.arange(len(points)), torch.argmax(outputs['pred_ious'], dim=1)]
+#     pred_masks = (pred_masks > 0.)
+#     for i in range(len(pred_masks)):
+#         m = pred_masks[i].cpu().numpy().astype(np.uint8)
+#         from ops.foundation_models.segment_anything.utils.amg import remove_small_regions
+#
+#         min_area = 10
+#         m, changed = remove_small_regions(m, min_area, mode="holes")
+#         unchanged = not changed
+#         m, changed = remove_small_regions(m, min_area, mode="islands")
+#         unchanged = unchanged and not changed
+#         m = m.astype(np.uint8)
+#         pred_masks[i] = torch.from_numpy(m).bool()
+#     pred_boxes = batched_mask_to_box(
+#         F.interpolate(pred_masks.unsqueeze(1).float(), size=(1024, 1024)).squeeze(1).bool())
+#     pseudo_boxes_data[fname] = pred_boxes.cpu()
+#
+# # 展示伪标签结果
+# # read_image(fname)
+# fname = list(pseudo_boxes_data)[0]
+# # fname = '2.jpg'
+# plot_results(read_image(fname),
+#              points=all_data[fname]['annotations']['points'],
+#              bboxes=pseudo_boxes_data[fname],
+#              )
+#
+# torch.save(pseudo_boxes_data, f'{project_root}/data/fsc147/sam/pseudo_boxes_data_vith.pth')
 
 # # Generate text and example CLIP embeddings
 
@@ -309,7 +310,7 @@ from ops.foundation_models import clip
 print('开始基于clip提取小样本的图像嵌入')
 clip.available_models()
 # model, preprocess = clip.load("ViT-B/32")
-model, preprocess = clip.load(name="ViT-B/32",download_root='/mnt/mydisk/wjj/PseCo-main/ops/foundation_models/clip/')
+model, preprocess = clip.load(name='/mnt/mydisk/wjj/PseCo-main/ops/foundation_models/clip/ViT-B-32.pt')
 model.cuda().eval()
 input_resolution = model.visual.input_resolution
 context_length = model.context_length

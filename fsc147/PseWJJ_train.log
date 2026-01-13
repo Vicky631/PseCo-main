@@ -1,0 +1,21 @@
+2026-01-10 20:22:56,533 - INFO - 开始加载数据...
+Traceback (most recent call last):
+  File "2_train_heatmap.py", line 86, in <module>
+    all_data = torch.load('/mnt/mydisk/wjj/PseCo-main/data/fsc147/sam/all_data_vith_v5.pth', map_location='cpu')
+  File "/home/zcy/anaconda3/envs/WJJpy38tc112/lib/python3.8/site-packages/torch/serialization.py", line 712, in load
+    return _load(opened_zipfile, map_location, pickle_module, **pickle_load_args)
+  File "/home/zcy/anaconda3/envs/WJJpy38tc112/lib/python3.8/site-packages/torch/serialization.py", line 1049, in _load
+    result = unpickler.load()
+  File "/home/zcy/anaconda3/envs/WJJpy38tc112/lib/python3.8/site-packages/torch/serialization.py", line 1019, in persistent_load
+    load_tensor(dtype, nbytes, key, _maybe_decode_ascii(location))
+  File "/home/zcy/anaconda3/envs/WJJpy38tc112/lib/python3.8/site-packages/torch/serialization.py", line 997, in load_tensor
+    storage = zip_file.get_storage_from_record(name, numel, torch._UntypedStorage).storage()._untyped()
+KeyboardInterrupt
+2026-01-10 20:27:00,206 - INFO - 开始加载数据...
+2026-01-10 20:33:27,503 - INFO - 数据加载完成，共6054个样本
+2026-01-10 20:33:29,842 - INFO - segment anything数据加载完成
+2026-01-10 20:33:29,842 - INFO - 开始数据预处理...
+  0%|          | 0/6054 [00:00<?, ?it/s]  3%|▎         | 207/6054 [00:00<00:02, 2062.50it/s]  7%|▋         | 437/6054 [00:00<00:02, 2198.94it/s] 11%|█         | 667/6054 [00:00<00:02, 2240.25it/s] 15%|█▌        | 912/6054 [00:00<00:02, 2318.28it/s] 19%|█▉        | 1162/6054 [00:00<00:02, 2380.16it/s] 23%|██▎       | 1410/6054 [00:00<00:01, 2412.00it/s] 27%|██▋       | 1659/6054 [00:00<00:01, 2435.64it/s] 31%|███▏      | 1903/6054 [00:00<00:01, 2329.06it/s] 35%|███▌      | 2148/6054 [00:00<00:01, 2365.41it/s] 40%|███▉      | 2404/6054 [00:01<00:01, 2422.02it/s] 44%|████▍     | 2655/6054 [00:01<00:01, 2447.43it/s] 48%|████▊     | 2901/6054 [00:01<00:01, 2375.66it/s] 52%|█████▏    | 3146/6054 [00:01<00:01, 2395.93it/s] 56%|█████▌    | 3387/6054 [00:01<00:01, 2354.18it/s] 60%|██████    | 3641/6054 [00:01<00:01, 2406.08it/s] 64%|██████▍   | 3883/6054 [00:01<00:00, 2410.05it/s] 68%|██████▊   | 4128/6054 [00:01<00:00, 2421.80it/s] 72%|███████▏  | 4371/6054 [00:01<00:00, 2402.05it/s] 76%|███████▌  | 4612/6054 [00:01<00:00, 2372.95it/s] 80%|████████  | 4850/6054 [00:02<00:00, 2370.82it/s] 84%|████████▍ | 5089/6054 [00:02<00:00, 2374.13it/s] 88%|████████▊ | 5327/6054 [00:02<00:00, 2359.35it/s] 92%|█████████▏| 5564/6054 [00:02<00:00, 2342.33it/s] 96%|█████████▌| 5804/6054 [00:02<00:00, 2358.96it/s]100%|██████████| 6054/6054 [00:02<00:00, 2399.49it/s]100%|██████████| 6054/6054 [00:02<00:00, 2374.56it/s]
+2026-01-10 20:33:32,409 - INFO - 数据预处理完成
+2026-01-10 20:33:32,409 - INFO - 开始数据集划分...
+2026-01-10 20:33:32,415 - INFO - 数据集划分完成: train=3579, val=1286, test=1189
