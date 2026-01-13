@@ -1,7 +1,7 @@
 import os
 import sys
 
-project_root = '/home/zzhuang/PseCo'
+project_root = '/mnt/mydisk/wjj/PseCo-main'
 sys.path.insert(0, project_root)
 from torchvision.utils import make_grid
 from torchvision.transforms.functional import to_pil_image, to_tensor
