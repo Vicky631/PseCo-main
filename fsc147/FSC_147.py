@@ -207,7 +207,7 @@ if __name__ == "__main__":
     )
 
     # 单张图像测试：指定测试文件名
-    test_fname = '2.jpg'
+    test_fname = '7049.jpg'
 
     # 1. 加载原图和原图标注（tensor格式）
     img_orig = loader.get_image(test_fname)

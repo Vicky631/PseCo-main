@@ -1,149 +1,98 @@
-# import os
-# import shutil
-# import random
-# from pathlib import Path
-#
-# # 指定文件路径
-# image_path = '/home/zy/wjj/PseCo-main/data/fsc147/images_384_VarV2'
-# label_path = '/home/zy/wjj/PseCo-main/data/fsc147/label'
-# gt_path = '/home/zy/wjj/PseCo-main/data/fsc147/gt'
-#
-# # 获取所有文件名（不带后缀）
-# image_files = [f.stem for f in Path(image_path).glob('*.*')]
-# label_files = [f.stem for f in Path(label_path).glob('*.*')]
-# gt_files = [f.stem for f in Path(gt_path).glob('*.*')]
-#
-# # 确保图片、标签和gt文件名相同
-# assert image_files == label_files == gt_files, "文件名不匹配！"
-#
-# # 打乱文件顺序
-# random.shuffle(image_files)
-#
-# # 划分比例
-# train_ratio = 0.7
-# val_ratio = 0.15
-# test_ratio = 0.15
-#
-# # 计算划分索引
-# total_files = len(image_files)
-# train_end = int(total_files * train_ratio)
-# val_end = int(total_files * (train_ratio + val_ratio))
-#
-# # 划分数据
-# train_files = image_files[:train_end]
-# val_files = image_files[train_end:val_end]
-# test_files = image_files[val_end:]
-#
-# # 创建目标文件夹
-# for split in ['/home/zy/wjj/Prompt_sam_localization/dataset/FSC147/Train', '/home/zy/wjj/Prompt_sam_localization/dataset/FSC147/Val', '/home/zy/wjj/Prompt_sam_localization/dataset/FSC147/Test']:
-#     os.makedirs(f'{split}/images', exist_ok=True)
-#     os.makedirs(f'{split}/labels', exist_ok=True)
-#     os.makedirs(f'{split}/gt', exist_ok=True)
-#
-# # 将文件复制到对应文件夹
-# def copy_files(files, split):
-#     for file in files:
-#         shutil.copy(os.path.join(image_path, f"{file}.jpg"), f'{split}/images/')
-#         shutil.copy(os.path.join(label_path, f"{file}.txt"), f'{split}/labels/')
-#         shutil.copy(os.path.join(gt_path, f"{file}.png"), f'{split}/gt/')
-#
-# copy_files(train_files, 'train')
-# copy_files(val_files, 'val')
-# copy_files(test_files, 'test')
-#
-# print(f"划分完成：{len(train_files)} 训练集, {len(val_files)} 验证集, {len(test_files)} 测试集")
-#
-
 import os
-import json
-import shutil
-from importlib.util import source_hash
+import sys
+import torch
+import logging
 
-from torch.fx.experimental.unification.multipledispatch.dispatcher import source
+# 配置日志（方便看结果）
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# 定义路径
+# 项目根路径（和你的训练代码保持一致）
+project_root = '/mnt/mydisk/wjj/PseCo-main'
+sys.path.insert(0, project_root)
 
 
-# import os
-# import shutil
-#
-# # 定义路径
-# source_dir = '/home/zy/wjj/Prompt_sam_localization/dataset/FSC147/train/images'  # 替换为源文件夹路径
-# target_dir = '/home/zy/wjj/Prompt_sam_localization/dataset/FSC147/train/ground_truth'  # 替换为目标文件夹路径
-# destination_dir = '/home/zy/wjj/Prompt_sam_localization/dataset/FSC147/train/ground_truth/1'  # 替换为存放多余文件的目标文件夹路径
-#
-# # 创建目标文件夹（如果不存在）
-# os.makedirs(destination_dir, exist_ok=True)
-#
-# # 获取源文件夹和目标文件夹中的文件名（不带扩展名）
-# source_files = {os.path.splitext(f)[0] for f in os.listdir(source_dir)}
-# target_files = {os.path.splitext(f)[0] for f in os.listdir(target_dir)}
-#
-# # 比较两个文件夹，找到多余的文件
-# extra_files_in_source = source_files - target_files
-# extra_files_in_target = target_files - source_files
-#
-# # 转移多余的文件到目标文件夹
-# def move_extra_files(extra_files, from_dir):
-#     for file_name in extra_files:
-#         # 在源文件夹或目标文件夹中查找文件（考虑扩展名）
-#         for ext in ['.jpg', '.png', '.jpeg']:  # 根据实际情况添加文件扩展名
-#             file_path = os.path.join(from_dir, file_name + ext)
-#             if os.path.exists(file_path):
-#                 # 构建目标文件路径并转移文件
-#                 destination_file = os.path.join(destination_dir, file_name + ext)
-#                 shutil.move(file_path, destination_file)
-#                 print(f'文件 {file_path} 已转移到 {destination_file}')
-#                 break
-#
-# # 转移多余的文件
-# move_extra_files(extra_files_in_source, source_dir)
-# move_extra_files(extra_files_in_target, target_dir)
-#
-# print('文件转移完成')
+# ========== 核心：加载数据并扫描异常 ==========
+def check_example_clip_features():
+    # 1. 加载all_data（和训练代码用同一个文件）
+    logger.info("开始加载all_data文件...")
+    all_data = torch.load(f'{project_root}/data/fsc147/sam/all_data_vith_v5_fix.pth', map_location='cpu')
+    logger.info(f"all_data加载完成，共{len(all_data)}个文件")
 
-test_list=[]
-train_list=[]
-val_list=[]
-files1 = '/home/zy/wjj/Prompt_sam_localization/dataset/FSC147/train/ground_truth'
-train_names = [os.path.splitext(file)[0] for file in os.listdir(files1) if os.path.isfile(os.path.join(files1, file))]
-files2 = '/home/zy/wjj/Prompt_sam_localization/dataset/FSC147/test/ground_truth'
-test_names = [os.path.splitext(file)[0] for file in os.listdir(files2) if os.path.isfile(os.path.join(files2, file))]
-files3 = '/home/zy/wjj/Prompt_sam_localization/dataset/FSC147/valid/ground_truth'
-val_names = [os.path.splitext(file)[0] for file in os.listdir(files3) if os.path.isfile(os.path.join(files3, file))]
+    # 2. 初始化异常记录
+    abnormal_records = []
+    total_files = len(all_data)
+    checked_files = 0
 
-source_file='/home/zy/wjj/PseCo-main/data/fsc147/MT'
+    # 3. 遍历所有文件，检查example_clip_features
+    for fname, data in all_data.items():
+        checked_files += 1
+        if checked_files % 100 == 0:
+            logger.info(f"已检查{checked_files}/{total_files}个文件，当前异常数：{len(abnormal_records)}")
 
-# 目标文件夹路径
-train_dir = '/home/zy/wjj/Prompt_sam_localization/dataset/FSC/train/ground_truth'
-test_dir = '/home/zy/wjj/Prompt_sam_localization/dataset/FSC/test/ground_truth'
-val_dir = '/home/zy/wjj/Prompt_sam_localization/dataset/FSC/valid/ground_truth'
+        # 跳过没有example_clip_features的文件
+        if 'example_clip_features' not in data:
+            logger.warning(f"文件{fname}无example_clip_features，跳过")
+            continue
 
-# 确保目标文件夹存在，如果不存在则创建
-os.makedirs(train_dir, exist_ok=True)
-os.makedirs(test_dir, exist_ok=True)
-os.makedirs(val_dir, exist_ok=True)
+        # 获取example_clip_features
+        clip_feats = data['example_clip_features']
+        # 确保是tensor（避免其他格式）
+        if not isinstance(clip_feats, torch.Tensor):
+            logger.error(f"文件{fname}的example_clip_features不是Tensor，类型：{type(clip_feats)}")
+            continue
 
-# 将文件按照名称复制到对应的文件夹
-for file in os.listdir(source_file):
-    source_path = os.path.join(source_file, file)
+        # 打印该文件的特征基本信息（前100个文件打印，避免日志过多）
+        if checked_files <= 100:
+            logger.debug(f"文件{fname} - example_clip_features形状：{clip_feats.shape}")
 
-    # 检查是否是文件
-    if os.path.isfile(source_path):
+        # 4. 检查每个特征的维度（重点：第0维是否为4，期望是3）
+        # clip_feats的形状应该是 [N, 3, 512]（N是特征数量，3是关键维度，512是特征长度）
+        if len(clip_feats.shape) != 3:
+            # 维度数异常
+            abnormal_records.append({
+                "file": fname,
+                "error_type": "维度数异常",
+                "total_shape": clip_feats.shape,
+                "expected_dim": 3,
+                "actual_dim": len(clip_feats.shape)
+            })
+            logger.error(
+                f"❌ 文件{fname} - example_clip_features维度数异常：期望3维，实际{len(clip_feats.shape)}维，形状{clip_feats.shape}")
+            continue
 
-        file_name_without_extension = os.path.splitext(file)[0]
-        file_name_without_extension=file_name_without_extension.replace('_density','').replace('_center_points','')
-        # 依据文件名决定目标文件夹
-        if file_name_without_extension in train_names:
-            destination = os.path.join(train_dir, file)
-        elif file_name_without_extension in test_names:
-            destination = os.path.join(test_dir, file)
-        elif file_name_without_extension in val_names:
-            destination = os.path.join(val_dir, file)
-        else:
-            continue  # 如果文件名不在任何一个列表中，则跳过
+        # 检查第1维（关键维度）是否为4（你的问题是第1维=4，期望=3）
+        feat_num, key_dim, feat_len = clip_feats.shape
+        if key_dim != 3:
+            # 关键维度异常（重点排查）
+            abnormal_records.append({
+                "file": fname,
+                "error_type": "关键维度异常",
+                "total_shape": clip_feats.shape,
+                "expected_key_dim": 3,
+                "actual_key_dim": key_dim,
+                "feat_len": feat_len
+            })
+            logger.error(
+                f"❌ 文件{fname} - example_clip_features关键维度异常：期望第1维=3，实际={key_dim}，形状{clip_feats.shape}")
 
-        # 复制文件到目标路径
-        shutil.copy(source_path, destination.replace('_density',''))
+            # 进一步检查：是否有个别特征维度异常（比如大部分3维，个别4维）
+            # 遍历每个特征（可选，耗时但精准）
+            for feat_idx in range(feat_num):
+                single_feat = clip_feats[feat_idx]
+                if len(single_feat.shape) != 2 or single_feat.shape[0] != 3:
+                    logger.error(f"   → 特征{feat_idx}形状异常：{single_feat.shape}，期望(3,512)")
 
-print("文件复制完成！")
+    # 5. 输出最终汇总
+    logger.info("\n===== 排查结果汇总 =====")
+    if abnormal_records:
+        logger.error(f"共发现{len(abnormal_records)}个文件的example_clip_features异常：")
+        for rec in abnormal_records:
+            logger.error(f"文件：{rec['file']} | 问题：{rec['error_type']} | 详情：{rec}")
+    else:
+        logger.info("✅ 所有文件的example_clip_features维度均正常（第1维=3）")
+
+
+# ========== 运行排查 ==========
+if __name__ == "__main__":
+    check_example_clip_features()

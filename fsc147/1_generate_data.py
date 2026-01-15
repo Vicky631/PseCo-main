@@ -344,184 +344,214 @@ def extract_clip_features(fname, bboxes):
     return e
 
 
+# for fname in tqdm.tqdm(all_data):
+#     boxes = all_data[fname]['box_examples_coordinates']
+#     all_data[fname]['example_clip_features'] = extract_clip_features(fname, boxes.reshape(-1, 4)).view(-1,
+#                                                                                                        boxes.size(0),
+#                                                                                                        512)
+# ========== 核心修改部分 ==========
+# 目标示例框数量（统一为3）
+TARGET_BOX_NUM = 5
+
 for fname in tqdm.tqdm(all_data):
     boxes = all_data[fname]['box_examples_coordinates']
-    all_data[fname]['example_clip_features'] = extract_clip_features(fname, boxes.reshape(-1, 4)).view(-1,
-                                                                                                       boxes.size(0),
-                                                                                                       512)
+    # 1. 提取CLIP特征
+    clip_feats = extract_clip_features(fname, boxes.reshape(-1, 4))  # [M, 512]
+    M = clip_feats.size(0)
+
+    # 2. 统一维度为3（解决4/5维异常的核心）
+    if M > TARGET_BOX_NUM:
+        # 裁剪：取前3个示例框特征
+        clip_feats = clip_feats[:TARGET_BOX_NUM, :]
+        print(f"文件{fname}示例框数{M}，裁剪为5个")
+    elif M < TARGET_BOX_NUM:
+        # 填充：补0到3个示例框
+        pad_feats = torch.zeros((TARGET_BOX_NUM - M, 512), dtype=clip_feats.dtype, device=clip_feats.device)
+        clip_feats = torch.cat([clip_feats, pad_feats], dim=0)
+        print(f"文件{fname}示例框数{M}，填充为5个")
+
+    # 3. 重塑为 [1, 5, 512]（训练代码期望的维度）
+    all_data[fname]['example_clip_features'] = clip_feats.view(1, TARGET_BOX_NUM, 512)
+
+# ========== 保存修正后的数据 ==========
+torch.save(
+    all_data,
+    f'{project_root}/data/fsc147/sam/all_data_vith_v5_fix.pth',
+    pickle_protocol=5  # 关键：指定协议5
+)
 # =====================基于clip提取全量的文本字典=====================
-from easydict import EasyDict
-print('开始基于clip提取全量的文本字典')
-# @title Define hyperparameters
-FLAGS = {
-    'prompt_engineering': True,
-    'this_is': True,
-
-    'temperature': 100.0,
-    'use_softmax': False,
-}
-
-
-FLAGS = EasyDict(FLAGS)
-
-
-def article(name):
-    return 'an' if name[0] in 'aeiou' else 'a'
-
-
-def processed_name(name, rm_dot=False):
-    # _ for lvis
-    # / for obj365
-    res = name.replace('_', ' ').replace('/', ' or ').lower()
-    if rm_dot:
-        res = res.rstrip('.')
-    return res
-
-
-single_template = [
-    'a photo of {article} {}.'
-]
-
-multiple_templates = [
-    'There is {article} {} in the scene.',
-    'There is the {} in the scene.',
-    'a photo of {article} {} in the scene.',
-    'a photo of the {} in the scene.',
-    'a photo of one {} in the scene.',
-
-    'itap of {article} {}.',
-    'itap of my {}.',  # itap: I took a picture of
-    'itap of the {}.',
-    'a photo of {article} {}.',
-    'a photo of my {}.',
-    'a photo of the {}.',
-    'a photo of one {}.',
-    'a photo of many {}.',
-
-    'a good photo of {article} {}.',
-    'a good photo of the {}.',
-    'a bad photo of {article} {}.',
-    'a bad photo of the {}.',
-    'a photo of a nice {}.',
-    'a photo of the nice {}.',
-    'a photo of a cool {}.',
-    'a photo of the cool {}.',
-    'a photo of a weird {}.',
-    'a photo of the weird {}.',
-
-    'a photo of a small {}.',
-    'a photo of the small {}.',
-    'a photo of a large {}.',
-    'a photo of the large {}.',
-
-    'a photo of a clean {}.',
-    'a photo of the clean {}.',
-    'a photo of a dirty {}.',
-    'a photo of the dirty {}.',
-
-    'a bright photo of {article} {}.',
-    'a bright photo of the {}.',
-    'a dark photo of {article} {}.',
-    'a dark photo of the {}.',
-
-    'a photo of a hard to see {}.',
-    'a photo of the hard to see {}.',
-    'a low resolution photo of {article} {}.',
-    'a low resolution photo of the {}.',
-    'a cropped photo of {article} {}.',
-    'a cropped photo of the {}.',
-    'a close-up photo of {article} {}.',
-    'a close-up photo of the {}.',
-    'a jpeg corrupted photo of {article} {}.',
-    'a jpeg corrupted photo of the {}.',
-    'a blurry photo of {article} {}.',
-    'a blurry photo of the {}.',
-    'a pixelated photo of {article} {}.',
-    'a pixelated photo of the {}.',
-
-    'a black and white photo of the {}.',
-    'a black and white photo of {article} {}.',
-
-    'a plastic {}.',
-    'the plastic {}.',
-
-    'a toy {}.',
-    'the toy {}.',
-    'a plushie {}.',
-    'the plushie {}.',
-    'a cartoon {}.',
-    'the cartoon {}.',
-
-    'an embroidered {}.',
-    'the embroidered {}.',
-
-    'a painting of the {}.',
-    'a painting of a {}.',
-]
-
-
-def build_text_embedding(categories):
-    """
-    基于clip文本编码器构建文本嵌入向量
-
-    该函数根据给定的类别列表，使用CLIP模型生成对应的文本嵌入向量。
-    支持多种模板和提示工程选项，对文本进行编码和归一化处理。
-
-    Args:
-        categories (list): 类别名称列表，用于构建文本嵌入
-
-    Returns:
-        dict: 包含类别名称作为键，对应文本嵌入向量作为值的字典
-              每个嵌入向量都经过归一化处理并转换为CPU张量
-    """
-    if FLAGS.prompt_engineering:
-        templates = multiple_templates
-    else:
-        templates = single_template
-
-    with torch.no_grad():
-        all_text_embeddings = {}
-        print('Building text embeddings...')
-
-        # 遍历每个类别，生成对应的文本嵌入
-        for category in tqdm.tqdm(categories):
-            # 根据模板格式化文本，处理类别名称并添加冠词
-            texts = [
-                template.format(processed_name(category, rm_dot=True),
-                                article=article(category))
-                for template in templates]
-
-            # 根据配置添加"This is"前缀到以冠词开头的文本
-            if FLAGS.this_is:
-                texts = [
-                    'This is ' + text if text.startswith('a') or text.startswith('the') else text
-                    for text in texts
-                ]
-
-            # 对文本进行tokenize处理并移到GPU
-            texts = clip.tokenize(texts)  # tokenize
-            texts = texts.cuda()
-
-            # 使用文本编码器生成嵌入向量并进行归一化
-            text_embeddings = model.encode_text(texts)  # embed with text encoder
-            text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
-
-            # 计算平均嵌入向量并再次归一化
-            text_embedding = text_embeddings.mean(dim=0)
-            text_embedding /= text_embedding.norm()
-
-            # 保存处理后的嵌入向量到CPU内存
-            all_text_embeddings[category] = text_embedding.float().cpu()
-
-    return all_text_embeddings
-
-
-# 生成文本嵌入的执行入口
-classes = set(all_data[fname]['class_name'] for fname in all_data)
-imagenet_classes = classes
-print(imagenet_classes)
-print(len(imagenet_classes))
-zeroshot_weights = build_text_embedding(imagenet_classes)
-zeroshot_weights
-# 保存文本嵌入向量
-torch.save(zeroshot_weights, f'{project_root}/data/fsc147/clip_text_prompt.pth')
+# from easydict import EasyDict
+# print('开始基于clip提取全量的文本字典')
+# # @title Define hyperparameters
+# FLAGS = {
+#     'prompt_engineering': True,
+#     'this_is': True,
+#
+#     'temperature': 100.0,
+#     'use_softmax': False,
+# }
+#
+#
+# FLAGS = EasyDict(FLAGS)
+#
+#
+# def article(name):
+#     return 'an' if name[0] in 'aeiou' else 'a'
+#
+#
+# def processed_name(name, rm_dot=False):
+#     # _ for lvis
+#     # / for obj365
+#     res = name.replace('_', ' ').replace('/', ' or ').lower()
+#     if rm_dot:
+#         res = res.rstrip('.')
+#     return res
+#
+#
+# single_template = [
+#     'a photo of {article} {}.'
+# ]
+#
+# multiple_templates = [
+#     'There is {article} {} in the scene.',
+#     'There is the {} in the scene.',
+#     'a photo of {article} {} in the scene.',
+#     'a photo of the {} in the scene.',
+#     'a photo of one {} in the scene.',
+#
+#     'itap of {article} {}.',
+#     'itap of my {}.',  # itap: I took a picture of
+#     'itap of the {}.',
+#     'a photo of {article} {}.',
+#     'a photo of my {}.',
+#     'a photo of the {}.',
+#     'a photo of one {}.',
+#     'a photo of many {}.',
+#
+#     'a good photo of {article} {}.',
+#     'a good photo of the {}.',
+#     'a bad photo of {article} {}.',
+#     'a bad photo of the {}.',
+#     'a photo of a nice {}.',
+#     'a photo of the nice {}.',
+#     'a photo of a cool {}.',
+#     'a photo of the cool {}.',
+#     'a photo of a weird {}.',
+#     'a photo of the weird {}.',
+#
+#     'a photo of a small {}.',
+#     'a photo of the small {}.',
+#     'a photo of a large {}.',
+#     'a photo of the large {}.',
+#
+#     'a photo of a clean {}.',
+#     'a photo of the clean {}.',
+#     'a photo of a dirty {}.',
+#     'a photo of the dirty {}.',
+#
+#     'a bright photo of {article} {}.',
+#     'a bright photo of the {}.',
+#     'a dark photo of {article} {}.',
+#     'a dark photo of the {}.',
+#
+#     'a photo of a hard to see {}.',
+#     'a photo of the hard to see {}.',
+#     'a low resolution photo of {article} {}.',
+#     'a low resolution photo of the {}.',
+#     'a cropped photo of {article} {}.',
+#     'a cropped photo of the {}.',
+#     'a close-up photo of {article} {}.',
+#     'a close-up photo of the {}.',
+#     'a jpeg corrupted photo of {article} {}.',
+#     'a jpeg corrupted photo of the {}.',
+#     'a blurry photo of {article} {}.',
+#     'a blurry photo of the {}.',
+#     'a pixelated photo of {article} {}.',
+#     'a pixelated photo of the {}.',
+#
+#     'a black and white photo of the {}.',
+#     'a black and white photo of {article} {}.',
+#
+#     'a plastic {}.',
+#     'the plastic {}.',
+#
+#     'a toy {}.',
+#     'the toy {}.',
+#     'a plushie {}.',
+#     'the plushie {}.',
+#     'a cartoon {}.',
+#     'the cartoon {}.',
+#
+#     'an embroidered {}.',
+#     'the embroidered {}.',
+#
+#     'a painting of the {}.',
+#     'a painting of a {}.',
+# ]
+#
+#
+# def build_text_embedding(categories):
+#     """
+#     基于clip文本编码器构建文本嵌入向量
+#
+#     该函数根据给定的类别列表，使用CLIP模型生成对应的文本嵌入向量。
+#     支持多种模板和提示工程选项，对文本进行编码和归一化处理。
+#
+#     Args:
+#         categories (list): 类别名称列表，用于构建文本嵌入
+#
+#     Returns:
+#         dict: 包含类别名称作为键，对应文本嵌入向量作为值的字典
+#               每个嵌入向量都经过归一化处理并转换为CPU张量
+#     """
+#     if FLAGS.prompt_engineering:
+#         templates = multiple_templates
+#     else:
+#         templates = single_template
+#
+#     with torch.no_grad():
+#         all_text_embeddings = {}
+#         print('Building text embeddings...')
+#
+#         # 遍历每个类别，生成对应的文本嵌入
+#         for category in tqdm.tqdm(categories):
+#             # 根据模板格式化文本，处理类别名称并添加冠词
+#             texts = [
+#                 template.format(processed_name(category, rm_dot=True),
+#                                 article=article(category))
+#                 for template in templates]
+#
+#             # 根据配置添加"This is"前缀到以冠词开头的文本
+#             if FLAGS.this_is:
+#                 texts = [
+#                     'This is ' + text if text.startswith('a') or text.startswith('the') else text
+#                     for text in texts
+#                 ]
+#
+#             # 对文本进行tokenize处理并移到GPU
+#             texts = clip.tokenize(texts)  # tokenize
+#             texts = texts.cuda()
+#
+#             # 使用文本编码器生成嵌入向量并进行归一化
+#             text_embeddings = model.encode_text(texts)  # embed with text encoder
+#             text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
+#
+#             # 计算平均嵌入向量并再次归一化
+#             text_embedding = text_embeddings.mean(dim=0)
+#             text_embedding /= text_embedding.norm()
+#
+#             # 保存处理后的嵌入向量到CPU内存
+#             all_text_embeddings[category] = text_embedding.float().cpu()
+#
+#     return all_text_embeddings
+#
+#
+# # 生成文本嵌入的执行入口
+# classes = set(all_data[fname]['class_name'] for fname in all_data)
+# imagenet_classes = classes
+# print(imagenet_classes)
+# print(len(imagenet_classes))
+# zeroshot_weights = build_text_embedding(imagenet_classes)
+# zeroshot_weights
+# # 保存文本嵌入向量
+# torch.save(zeroshot_weights, f'{project_root}/data/fsc147/clip_text_prompt.pth')
