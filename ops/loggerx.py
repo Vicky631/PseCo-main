@@ -56,10 +56,10 @@ class LoggerX(object):
     def __init__(self, save_root, enable_wandb=False, **kwargs):
         if save_root is None:
             save_root = '.'
-            self.models_save_dir = osp.join(save_root, 'save_models')
-            self.images_save_dir = osp.join(save_root, 'save_images')
-            os.makedirs(self.models_save_dir, exist_ok=True)
-            os.makedirs(self.images_save_dir, exist_ok=True)
+        self.models_save_dir = osp.join(save_root, 'save_models')
+        self.images_save_dir = osp.join(save_root, 'save_images')
+        os.makedirs(self.models_save_dir, exist_ok=True)
+        os.makedirs(self.images_save_dir, exist_ok=True)
         self._modules = []
         self._module_names = []
         if dist.is_initialized():
