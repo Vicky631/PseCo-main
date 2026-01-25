@@ -1,3 +1,21 @@
+"""
+此脚本用于训练ROI Head模型，专门用于目标检测和计数任务。
+该模型结合了视觉特征和语言提示，使用SAM（Segment Anything Model）和CLIP特征进行少样本或零样本检测任务，
+主要应用于FSC147数据集上的目标检测与计数。
+
+输入路径和文件：
+- 输入图像：'/mnt/mydisk/wjj/dataset/FSC_147/images_384_VarV2/' 目录下的图像文件
+- COCO标注文件：'/mnt/mydisk/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json'
+- CLIP文本提示：'{project_root}/data/fsc147/clip_text_prompt.pth'
+- 训练数据：'{project_root}/data/fsc147/sam/all_data_vith.pth'
+- 预测数据：'{project_root}/data/fsc147/sam/all_predictions_vith.pth'
+- 伪框数据：'{project_root}/data/fsc147/sam/pseudo_boxes_data_vith.pth'
+
+输出路径和文件：
+- 模型权重：'{project_root}/data/fsc147/checkpoints/cls_head/ckpt/{run_name}'
+- COCO格式的评估结果：通过COCO API生成的评估指标
+- 计数评估指标：MAE, RMSE, NAE, SRE等指标
+"""
 import os
 import sys
 import logging
@@ -6,7 +24,9 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger_module = logging.getLogger(__name__)
 
-project_root = '/mnt/mydisk/wjj/PseCo-main'
+project_root = '/ZHANGyong/wjj/PseCo-main'
+dataset_root = '/ZHANGyong/wjj/dataset'
+online_models = '/ZHANGyong/wjj/online_models/torch_cache/hub/checkpoints'
 sys.path.insert(0, project_root)
 from torchvision.utils import make_grid
 from torchvision.transforms.functional import to_pil_image, to_tensor
@@ -45,7 +65,7 @@ from pycocotools.coco import COCO
 # 加载COCO标注文件（原代码中register_coco_instances的作用仅为评估，此处直接加载）
 # coco_gt = COCO(f"{project_root}/data/fsc147/instances_test_val_bin.json")
 logging.info("开始加载COCO标注文件")
-coco_gt = COCO(f"/mnt/mydisk/wjj/dataset/FSC_147/instances_test_val_bin.json")
+coco_gt = COCO(f"{dataset_root}/FSC_147/instances_test_val_bin.json")
 logging.info("COCO标注文件加载完成")
 # ============================================================
 torch.autograd.set_grad_enabled(False)
@@ -62,7 +82,7 @@ logging.info("开始加载模型和数据")
 # load all features and proposals
 if opts.arch == 'vith':
     logging.info("加载ViT-H架构模型和数据")
-    sam = build_sam_vit_h("/mnt/mydisk/wjj/Prompt_sam_localization/checkpoint/sam_vit_h_4b8939.pth").cuda().eval()
+    sam = build_sam_vit_h(f"{online_models}/sam_vit_h_4b8939.pth").cuda().eval()
     logging.info("开始加载all_data")
     all_data = torch.load(f'{project_root}/data/fsc147/sam/all_data_vith_v5_fix.pth', map_location='cpu')
     logging.info("开始加载all_predictions")

@@ -1,0 +1,59 @@
+# ==================== 项目配置 ====================
+project_root: "/mnt/mydisk/wjj/PseCo-main"
+
+# ==================== 数据集配置 ====================
+dataset:
+  name: "fsc147"
+  root: "/mnt/mydisk/wjj/dataset/FSC_147"
+  annotation_file: "{dataset.root}/annotation_FSC147_384_with_gt.json"
+  image_dir: "{dataset.root}/images_384_VarV2"
+  coco_annotation: "{dataset.root}/instances_test_val_bin.json"
+
+# ==================== 模型路径 ====================
+models:
+  sam:
+    checkpoint: "/mnt/mydisk/wjj/Prompt_sam_localization/checkpoint/sam_vit_h_4b8939.pth"
+    arch: "vith"  # vitb, vitl, vith
+  clip:
+    checkpoint: "{project_root}/ops/foundation_models/clip/ViT-B-32.pt"
+
+# ==================== 输出路径 ====================
+outputs:
+  data_dir: "{project_root}/data/{dataset.name}/sam"
+  checkpoint_dir: "{project_root}/data/{dataset.name}/checkpoints"
+  log_dir: "{project_root}/logs"
+
+# ==================== 训练配置 ====================
+training:
+  stage1:
+    enabled: true
+    # 阶段1是推理流程，无训练参数
+  stage2:
+    enabled: true
+    max_iter: 50000
+    batch_size: 64
+    lr: 0.0001
+    weight_decay: 0.0
+    save_interval: 1000
+  stage3:
+    enabled: true
+    num_gpus: 4
+    master_port: 17673
+  stage4:
+    enabled: true
+    max_iter: 10000
+    batch_size: 32
+    lr: 0.0001
+    weight_decay: 0.00001
+    eval_interval: 1000
+    mode: "fewshot"  # fewshot, zeroshot, vild
+    run_name: "MLP_small_box_w1"
+    wandb:
+      enabled: false
+      entity: "zzhuang"
+      project: "Counting"
+
+# ==================== GPU配置 ====================
+gpu:
+  device: 0  # 单GPU训练时的设备ID
+  distributed: false  # 是否使用分布式训练（阶段3必须为true）

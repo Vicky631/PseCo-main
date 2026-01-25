@@ -1,0 +1,52 @@
+python: can't open file '/mnt/mydisk/wjj/PseCo-main/fsc147/4_1_train_roi_head.py': [Errno 2] No such file or directory
+2026-01-15 20:44:08,808 - INFO - 开始解析命令行参数
+Namespace(arch='vith', entity='zzhuang', wandb=False, zeroshot=False)
+2026-01-15 20:44:08,809 - INFO - 命令行参数解析完成: Namespace(arch='vith', entity='zzhuang', wandb=False, zeroshot=False)
+Traceback (most recent call last):
+  File "/ZHANGyong/wjj/PseCo-main/fsc147/4_1_train_roi_head.py", line 63, in <module>
+    from pycocotools.coco import COCO
+ModuleNotFoundError: No module named 'pycocotools'
+2026-01-15 20:50:48,590 - INFO - 开始解析命令行参数
+Namespace(arch='vith', entity='zzhuang', wandb=False, zeroshot=False)
+2026-01-15 20:50:48,591 - INFO - 命令行参数解析完成: Namespace(arch='vith', entity='zzhuang', wandb=False, zeroshot=False)
+2026-01-15 20:50:48,591 - INFO - 开始加载COCO标注文件
+loading annotations into memory...
+Done (t=0.65s)
+creating index...
+index created!
+2026-01-15 20:50:49,388 - INFO - COCO标注文件加载完成
+2026-01-15 20:50:49,407 - INFO - 开始加载模型和数据
+2026-01-15 20:50:49,408 - INFO - 加载ViT-H架构模型和数据
+2026-01-15 20:51:21,462 - INFO - 开始加载all_data
+Traceback (most recent call last):
+  File "/ZHANGyong/wjj/PseCo-main/fsc147/4_1_train_roi_head.py", line 87, in <module>
+    all_data = torch.load(f'{project_root}/data/fsc147/sam/all_data_vith_v5_fix.pth', map_location='cpu')
+  File "/ZHANGyong/anaconda3/envs/WJJldm/lib/python3.8/site-packages/torch/serialization.py", line 699, in load
+    with _open_file_like(f, 'rb') as opened_file:
+  File "/ZHANGyong/anaconda3/envs/WJJldm/lib/python3.8/site-packages/torch/serialization.py", line 230, in _open_file_like
+    return _open_file(name_or_buffer, mode)
+  File "/ZHANGyong/anaconda3/envs/WJJldm/lib/python3.8/site-packages/torch/serialization.py", line 211, in __init__
+    super(_open_file, self).__init__(open(name, mode))
+FileNotFoundError: [Errno 2] No such file or directory: '/ZHANGyong/wjj/PseCo-main/data/fsc147/sam/all_data_vith_v5_fix.pth'
+2026-01-15 20:53:52,139 - INFO - 开始解析命令行参数
+Namespace(arch='vith', entity='zzhuang', wandb=False, zeroshot=False)
+2026-01-15 20:53:52,140 - INFO - 命令行参数解析完成: Namespace(arch='vith', entity='zzhuang', wandb=False, zeroshot=False)
+2026-01-15 20:53:52,141 - INFO - 开始加载COCO标注文件
+loading annotations into memory...
+Done (t=1.17s)
+creating index...
+index created!
+2026-01-15 20:53:53,553 - INFO - COCO标注文件加载完成
+2026-01-15 20:53:53,563 - INFO - 开始加载模型和数据
+2026-01-15 20:53:53,563 - INFO - 加载ViT-H架构模型和数据
+2026-01-15 20:54:06,574 - INFO - 开始加载all_data
+Traceback (most recent call last):
+  File "/ZHANGyong/wjj/PseCo-main/fsc147/4_1_train_roi_head.py", line 87, in <module>
+    all_data = torch.load(f'{project_root}/data/fsc147/sam/all_data_vith_v5_fix.pth', map_location='cpu')
+  File "/ZHANGyong/anaconda3/envs/WJJldm/lib/python3.8/site-packages/torch/serialization.py", line 699, in load
+    with _open_file_like(f, 'rb') as opened_file:
+  File "/ZHANGyong/anaconda3/envs/WJJldm/lib/python3.8/site-packages/torch/serialization.py", line 230, in _open_file_like
+    return _open_file(name_or_buffer, mode)
+  File "/ZHANGyong/anaconda3/envs/WJJldm/lib/python3.8/site-packages/torch/serialization.py", line 211, in __init__
+    super(_open_file, self).__init__(open(name, mode))
+FileNotFoundError: [Errno 2] No such file or directory: '/ZHANGyong/wjj/PseCo-main/data/fsc147/sam/all_data_vith_v5_fix.pth'
