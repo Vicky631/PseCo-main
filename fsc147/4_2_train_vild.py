@@ -268,21 +268,27 @@ coco_preds = []
 all_predictions = {}
 
 for fname in tqdm.tqdm(image_list):
+    # 提取当前图像的特征并转移到GPU
     features = all_data[fname]['features'].cuda()
+    # 获取小样本提示、或零样本文本
     with torch.no_grad():
         cls_head.eval()
-        # few shot
+        # 小样本
         # example_features = all_data[fname]['example_clip_features'].cuda()
-        # zero shot
+        # 零样本
         class_name = all_data[fname]['class_name']
+        # 须保持一致
         example_features = clip_text_prompts[class_name].unsqueeze(0).cuda()
-
+    # 预测分数和框的筛选
     min_scores = 0.05
     max_points = 1000
+    # 须保持一致
     pred_points_score = all_data[fname]['predictions']['pred_points_score']
     mask = torch.zeros(pred_points_score.size(0))
     mask[:min(pred_points_score.size(0), max_points)] = 1
     mask[pred_points_score < min_scores] = 0
+
+    # 根据掩码筛选预测框和IoU分数，并转移到GPU
     pred_boxes = all_data[fname]['predictions']['pred_boxes'][:, :num_masks][mask.bool()].cuda()
     pred_ious = all_data[fname]['predictions']['pred_ious'][:, :num_masks][mask.bool()].cuda()
 
@@ -291,8 +297,9 @@ for fname in tqdm.tqdm(image_list):
     for indices in torch.arange(len(pred_boxes)).split(128):
         with torch.no_grad():
             cls_outs_ = cls_head(all_data[fname]['features'].cuda(), [pred_boxes[indices].reshape(-1, 4), ])
+            # 计算特征与类别特征的相似度，对每个mask的得分求平均
             pred_logits = cls_outs_[0].mm(example_features.T).mean(1).view(-1, num_masks)
-
+            # 将预测得分与IoU得分相乘，作为最终得分
             pred_logits = pred_logits * pred_ious[indices]
 
             all_pred_boxes.append(pred_boxes[indices, torch.argmax(pred_logits, dim=1)])

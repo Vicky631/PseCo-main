@@ -1,10 +1,10 @@
 # ==================== 项目配置 ====================
-project_root: "/mnt/mydisk/wjj/PseCo-main"
+project_root: "/ZHANGyong/wjj/PseCo-main"
 
 # ==================== 数据集配置 ====================
 dataset:
   name: "fsc147"
-  root: "/mnt/mydisk/wjj/dataset/FSC_147"
+  root: "/ZHANGyong/wjj/dataset/FSC_147"
   annotation_file: "{dataset.root}/annotation_FSC147_384_with_gt.json"
   image_dir: "{dataset.root}/images_384_VarV2"
   coco_annotation: "{dataset.root}/instances_test_val_bin.json"
@@ -12,7 +12,7 @@ dataset:
 # ==================== 模型路径 ====================
 models:
   sam:
-    checkpoint: "/mnt/mydisk/wjj/Prompt_sam_localization/checkpoint/sam_vit_h_4b8939.pth"
+    checkpoint: "/ZHANGyong/wjj/Prompt_sam_localization/checkpoint/sam_vit_h_4b8939.pth"
     arch: "vith"  # vitb, vitl, vith
   clip:
     checkpoint: "{project_root}/ops/foundation_models/clip/ViT-B-32.pt"
