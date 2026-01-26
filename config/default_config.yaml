@@ -9,6 +9,13 @@ dataset:
   image_dir: "{dataset.root}/images_384_VarV2"
   coco_annotation: "{dataset.root}/instances_test_val_bin.json"
 
+# ==================== 推理配置（新增！）====================
+inference:
+  # PointDecoder权重路径（阶段2输出）
+  point_decoder_ckpt: "/ZHANGyong/wjj/PseCo-main/data/fsc147/checkpoints/point_decoder_vith_v5.pth"
+  # ROIHead权重路径（阶段4输出，可选，脚本会自动找最新的，这里可指定固定路径）
+  roi_head_ckpt: "/ZHANGyong/wjj/PseCo-main/data/fsc147/checkpoints/cls_head-10000"
+
 # ==================== 模型路径 ====================
 models:
   sam:

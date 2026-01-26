@@ -1,0 +1,26 @@
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:54] - setup_logging() - 日志系统初始化完成，日志文件: logs/test_log_20260126_194334.txt
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:576] - main() - ============================================================
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:577] - main() - PseCo推理测试启动
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:578] - main() - ============================================================
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:579] - main() - 配置文件: config/default_config.yaml
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:580] - main() - 测试数据根目录: /ZHANGyong/wjj/dataset/FSC_147
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:581] - main() - 标注文件: /ZHANGyong/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:582] - main() - 数据集类型: auto
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:583] - main() - 输出目录: results
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:588] - main() - ✅ 配置加载成功
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:143] - load_test_data() - 加载测试数据: /ZHANGyong/wjj/dataset/FSC_147
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:144] - load_test_data() - 标注文件: /ZHANGyong/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json
+2026-01-26 19:43:34 - INFO - [test_pipeline.py:145] - load_test_data() - 数据集类型: auto
+2026-01-26 19:43:35 - INFO - [test_pipeline.py:150] - load_test_data() - 自动检测到格式: fsc147_json
+2026-01-26 19:43:36 - INFO - [test_pipeline.py:204] - load_test_data() - ✅ 加载完成，共 6054 张图像
+2026-01-26 19:43:36 - INFO - [test_pipeline.py:96] - load_model_checkpoints() - 从配置文件读取PointDecoder路径: /ZHANGyong/wjj/PseCo-main/data/fsc147/checkpoints/point_decoder_vith_v5.pth
+2026-01-26 19:43:36 - INFO - [test_pipeline.py:105] - load_model_checkpoints() - 加载PointDecoder权重: /ZHANGyong/wjj/PseCo-main/data/fsc147/checkpoints/point_decoder_vith_v5.pth
+2026-01-26 19:43:36 - WARNING - [test_pipeline.py:126] - load_model_checkpoints() - ROIHead目录不存在: /ZHANGyong/wjj/PseCo-main/data/fsc147/checkpoints/cls_head/ckpt/MLP_small_box_w1
+2026-01-26 19:43:36 - INFO - [test_pipeline.py:231] - run_inference() - ============================================================
+2026-01-26 19:43:36 - INFO - [test_pipeline.py:232] - run_inference() - 开始推理
+2026-01-26 19:43:36 - INFO - [test_pipeline.py:233] - run_inference() - ============================================================
+2026-01-26 19:43:36 - INFO - [test_pipeline.py:234] - run_inference() - 推理模式: zeroshot
+2026-01-26 19:43:36 - INFO - [test_pipeline.py:241] - run_inference() - 加载ROIHead模型
+2026-01-26 19:43:37 - WARNING - [test_pipeline.py:258] - run_inference() - ⚠️ 未找到ROIHead权重，使用未训练的模型
+2026-01-26 19:43:37 - INFO - [test_pipeline.py:265] - run_inference() - 加载CLIP文本提示: /ZHANGyong/wjj/PseCo-main/data/fsc147/clip_text_prompt.pth
+2026-01-26 19:43:37 - INFO - [test_pipeline.py:279] - run_inference() - 加载预处理数据

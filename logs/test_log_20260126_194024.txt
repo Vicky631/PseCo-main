@@ -1,0 +1,31 @@
+2026-01-26 19:40:24 - INFO - [test_pipeline.py:54] - setup_logging() - 日志系统初始化完成，日志文件: logs/test_log_20260126_194024.txt
+2026-01-26 19:40:24 - INFO - [test_pipeline.py:576] - main() - ============================================================
+2026-01-26 19:40:24 - INFO - [test_pipeline.py:577] - main() - PseCo推理测试启动
+2026-01-26 19:40:24 - INFO - [test_pipeline.py:578] - main() - ============================================================
+2026-01-26 19:40:24 - INFO - [test_pipeline.py:579] - main() - 配置文件: config/default_config.yaml
+2026-01-26 19:40:24 - INFO - [test_pipeline.py:580] - main() - 测试数据根目录: /ZHANGyong/wjj/dataset/FSC_147
+2026-01-26 19:40:24 - INFO - [test_pipeline.py:581] - main() - 标注文件: /ZHANGyong/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json
+2026-01-26 19:40:24 - INFO - [test_pipeline.py:582] - main() - 数据集类型: auto
+2026-01-26 19:40:24 - INFO - [test_pipeline.py:583] - main() - 输出目录: results
+2026-01-26 19:40:24 - INFO - [test_pipeline.py:588] - main() - ✅ 配置加载成功
+2026-01-26 19:40:38 - INFO - [test_pipeline.py:143] - load_test_data() - 加载测试数据: /ZHANGyong/wjj/dataset/FSC_147
+2026-01-26 19:40:38 - INFO - [test_pipeline.py:144] - load_test_data() - 标注文件: /ZHANGyong/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json
+2026-01-26 19:40:38 - INFO - [test_pipeline.py:145] - load_test_data() - 数据集类型: auto
+2026-01-26 19:40:40 - INFO - [test_pipeline.py:150] - load_test_data() - 自动检测到格式: fsc147_json
+2026-01-26 19:40:41 - INFO - [test_pipeline.py:204] - load_test_data() - ✅ 加载完成，共 6054 张图像
+2026-01-26 19:41:05 - ERROR - [test_pipeline.py:635] - main() - ❌ 推理测试失败: 'int' object has no attribute 'split'
+2026-01-26 19:41:05 - ERROR - [test_pipeline.py:637] - main() - Traceback (most recent call last):
+  File "/ZHANGyong/wjj/PseCo-main/test_pipeline.py", line 606, in main
+    checkpoints = load_model_checkpoints(config, args.ckpt_path)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ZHANGyong/wjj/PseCo-main/test_pipeline.py", line 81, in load_model_checkpoints
+    if 'inference' in config and 'point_decoder_ckpt' in config['inference']:
+       ^^^^^^^^^^^^^^^^^^^^^
+  File "/ZHANGyong/wjj/PseCo-main/utils/config_loader.py", line 66, in __getitem__
+    return self.get(key)
+           ^^^^^^^^^^^^^
+  File "/ZHANGyong/wjj/PseCo-main/utils/config_loader.py", line 53, in get
+    keys = key.split('.')
+           ^^^^^^^^^
+AttributeError: 'int' object has no attribute 'split'
+

@@ -283,6 +283,7 @@ for fname in tqdm.tqdm(image_list):
     min_scores = 0.05
     max_points = 1000
     # 须保持一致
+    # 这里写的不对吧，应该是all_predictions[fname]['pred_points_score']
     pred_points_score = all_data[fname]['predictions']['pred_points_score']
     mask = torch.zeros(pred_points_score.size(0))
     mask[:min(pred_points_score.size(0), max_points)] = 1

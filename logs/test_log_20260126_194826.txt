@@ -1,0 +1,37 @@
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:54] - setup_logging() - 日志系统初始化完成，日志文件: logs/test_log_20260126_194826.txt
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:553] - main() - ============================================================
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:554] - main() - PseCo推理测试启动
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:555] - main() - ============================================================
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:556] - main() - 配置文件: config/default_config.yaml
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:557] - main() - 测试数据根目录: /ZHANGyong/wjj/dataset/FSC_147
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:558] - main() - 标注文件: /ZHANGyong/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:559] - main() - 数据集类型: auto
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:560] - main() - 输出目录: results
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:565] - main() - ✅ 配置加载成功
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:120] - load_test_data() - 加载测试数据: /ZHANGyong/wjj/dataset/FSC_147
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:121] - load_test_data() - 标注文件: /ZHANGyong/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json
+2026-01-26 19:48:26 - INFO - [test_pipeline.py:122] - load_test_data() - 数据集类型: auto
+2026-01-26 19:48:27 - INFO - [test_pipeline.py:127] - load_test_data() - 自动检测到格式: fsc147_json
+2026-01-26 19:48:28 - INFO - [test_pipeline.py:181] - load_test_data() - ✅ 加载完成，共 6054 张图像
+2026-01-26 19:48:28 - INFO - [test_pipeline.py:81] - load_model_checkpoints() - 加载PointDecoder权重: /ZHANGyong/wjj/PseCo-main/data/fsc147/checkpoints/point_decoder_vith_v5.pth
+2026-01-26 19:48:28 - INFO - [test_pipeline.py:97] - load_model_checkpoints() - 加载ROIHead权重: /ZHANGyong/wjj/PseCo-main/data/fsc147/checkpoints/cls_head/ckpt/MLP_small_box_w1/cls_head-10000.pth
+2026-01-26 19:48:28 - INFO - [test_pipeline.py:208] - run_inference() - ============================================================
+2026-01-26 19:48:28 - INFO - [test_pipeline.py:209] - run_inference() - 开始推理
+2026-01-26 19:48:28 - INFO - [test_pipeline.py:210] - run_inference() - ============================================================
+2026-01-26 19:48:28 - INFO - [test_pipeline.py:211] - run_inference() - 推理模式: zeroshot
+2026-01-26 19:48:28 - INFO - [test_pipeline.py:218] - run_inference() - 加载ROIHead模型
+2026-01-26 19:48:29 - INFO - [test_pipeline.py:233] - run_inference() - ✅ ROIHead权重加载成功
+2026-01-26 19:48:29 - INFO - [test_pipeline.py:242] - run_inference() - 加载CLIP文本提示: /ZHANGyong/wjj/PseCo-main/data/fsc147/clip_text_prompt.pth
+2026-01-26 19:48:29 - INFO - [test_pipeline.py:256] - run_inference() - 加载预处理数据
+2026-01-26 19:48:59 - INFO - [test_pipeline.py:259] - run_inference() - ✅ 加载完成: 6054 张图像的数据，6054 张图像的预测
+2026-01-26 19:48:59 - INFO - [test_pipeline.py:274] - run_inference() - 开始处理 6054 张图像
+2026-01-26 19:48:59 - ERROR - [test_pipeline.py:612] - main() - ❌ 推理测试失败: type object 'tqdm' has no attribute 'tqdm'
+2026-01-26 19:48:59 - ERROR - [test_pipeline.py:614] - main() - Traceback (most recent call last):
+  File "/ZHANGyong/wjj/PseCo-main/test_pipeline.py", line 586, in main
+    results = run_inference(
+              ^^^^^^^^^^^^^^
+  File "/ZHANGyong/wjj/PseCo-main/test_pipeline.py", line 276, in run_inference
+    for fname in tqdm.tqdm(image_list, desc="推理中"):
+                 ^^^^^^^^^
+AttributeError: type object 'tqdm' has no attribute 'tqdm'
+

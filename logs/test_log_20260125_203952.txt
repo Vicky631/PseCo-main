@@ -1,0 +1,74 @@
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:54] - setup_logging() - 日志系统初始化完成，日志文件: logs/test_log_20260125_203952.txt
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:470] - main() - ============================================================
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:471] - main() - PseCo推理测试启动
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:472] - main() - ============================================================
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:473] - main() - 配置文件: config/default_config.yaml
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:474] - main() - 测试数据根目录: /ZHANGyong/wjj/dataset
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:475] - main() - 标注文件: /ZHANGyong/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:476] - main() - 数据集类型: auto
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:477] - main() - 输出目录: results
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:482] - main() - ✅ 配置加载成功
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:120] - load_test_data() - 加载测试数据: /ZHANGyong/wjj/dataset
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:121] - load_test_data() - 标注文件: /ZHANGyong/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json
+2026-01-25 20:39:52 - INFO - [test_pipeline.py:122] - load_test_data() - 数据集类型: auto
+2026-01-25 20:39:54 - INFO - [test_pipeline.py:127] - load_test_data() - 自动检测到格式: fsc147_json
+2026-01-25 20:39:55 - INFO - [test_pipeline.py:181] - load_test_data() - ✅ 加载完成，共 6054 张图像
+2026-01-25 20:39:55 - ERROR - [test_pipeline.py:528] - main() - ❌ 推理测试失败: [Errno 13] Permission denied: '/mnt/mydisk'
+2026-01-25 20:39:55 - ERROR - [test_pipeline.py:530] - main() - Traceback (most recent call last):
+  File "/usr/local/anaconda3/lib/python3.11/pathlib.py", line 1116, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/mnt/mydisk/wjj/PseCo-main/data/fsc147/checkpoints'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/anaconda3/lib/python3.11/pathlib.py", line 1116, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/mnt/mydisk/wjj/PseCo-main/data/fsc147'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/anaconda3/lib/python3.11/pathlib.py", line 1116, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/mnt/mydisk/wjj/PseCo-main/data'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/anaconda3/lib/python3.11/pathlib.py", line 1116, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/mnt/mydisk/wjj/PseCo-main'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/anaconda3/lib/python3.11/pathlib.py", line 1116, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/mnt/mydisk/wjj'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/ZHANGyong/wjj/PseCo-main/test_pipeline.py", line 500, in main
+    checkpoints = load_model_checkpoints(config, args.ckpt_path)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ZHANGyong/wjj/PseCo-main/test_pipeline.py", line 78, in load_model_checkpoints
+    point_decoder_path = paths.get_stage2_output_point_decoder()
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ZHANGyong/wjj/PseCo-main/utils/path_manager.py", line 68, in get_stage2_output_point_decoder
+    checkpoint_dir = self.get_checkpoint_dir()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ZHANGyong/wjj/PseCo-main/utils/path_manager.py", line 41, in get_checkpoint_dir
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+  File "/usr/local/anaconda3/lib/python3.11/pathlib.py", line 1120, in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+  File "/usr/local/anaconda3/lib/python3.11/pathlib.py", line 1120, in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+  File "/usr/local/anaconda3/lib/python3.11/pathlib.py", line 1120, in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+  [Previous line repeated 2 more times]
+  File "/usr/local/anaconda3/lib/python3.11/pathlib.py", line 1116, in mkdir
+    os.mkdir(self, mode)
+PermissionError: [Errno 13] Permission denied: '/mnt/mydisk'
+

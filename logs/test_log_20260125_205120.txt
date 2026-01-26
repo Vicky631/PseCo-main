@@ -1,0 +1,24 @@
+2026-01-25 20:51:20 - INFO - [test_pipeline.py:54] - setup_logging() - 日志系统初始化完成，日志文件: logs/test_log_20260125_205120.txt
+2026-01-25 20:51:20 - INFO - [test_pipeline.py:470] - main() - ============================================================
+2026-01-25 20:51:20 - INFO - [test_pipeline.py:471] - main() - PseCo推理测试启动
+2026-01-25 20:51:20 - INFO - [test_pipeline.py:472] - main() - ============================================================
+2026-01-25 20:51:20 - INFO - [test_pipeline.py:473] - main() - 配置文件: config/default_config.yaml
+2026-01-25 20:51:20 - INFO - [test_pipeline.py:474] - main() - 测试数据根目录: /ZHANGyong/wjj/dataset
+2026-01-25 20:51:20 - INFO - [test_pipeline.py:475] - main() - 标注文件: /ZHANGyong/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json
+2026-01-25 20:51:20 - INFO - [test_pipeline.py:476] - main() - 数据集类型: auto
+2026-01-25 20:51:20 - INFO - [test_pipeline.py:477] - main() - 输出目录: results
+2026-01-25 20:51:24 - INFO - [test_pipeline.py:482] - main() - ✅ 配置加载成功
+2026-01-25 20:52:03 - INFO - [test_pipeline.py:120] - load_test_data() - 加载测试数据: /ZHANGyong/wjj/dataset
+2026-01-25 20:52:03 - INFO - [test_pipeline.py:121] - load_test_data() - 标注文件: /ZHANGyong/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json
+2026-01-25 20:52:03 - INFO - [test_pipeline.py:122] - load_test_data() - 数据集类型: auto
+2026-01-25 20:52:04 - INFO - [test_pipeline.py:127] - load_test_data() - 自动检测到格式: fsc147_json
+2026-01-25 20:52:05 - INFO - [test_pipeline.py:181] - load_test_data() - ✅ 加载完成，共 6054 张图像
+2026-01-25 20:52:05 - ERROR - [test_pipeline.py:528] - main() - ❌ 推理测试失败: PointDecoder权重文件不存在: /ZHANGyong/wjj/PseCo-main/data/fsc147/checkpoints/point_decoder_vith_v5.pth
+2026-01-25 20:52:05 - ERROR - [test_pipeline.py:530] - main() - Traceback (most recent call last):
+  File "/ZHANGyong/wjj/PseCo-main/test_pipeline.py", line 500, in main
+    checkpoints = load_model_checkpoints(config, args.ckpt_path)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ZHANGyong/wjj/PseCo-main/test_pipeline.py", line 84, in load_model_checkpoints
+    raise FileNotFoundError(f"PointDecoder权重文件不存在: {point_decoder_path}")
+FileNotFoundError: PointDecoder权重文件不存在: /ZHANGyong/wjj/PseCo-main/data/fsc147/checkpoints/point_decoder_vith_v5.pth
+

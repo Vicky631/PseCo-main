@@ -1,0 +1,45 @@
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:54] - setup_logging() - 日志系统初始化完成，日志文件: logs/test_log_20260125_205426.txt
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:470] - main() - ============================================================
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:471] - main() - PseCo推理测试启动
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:472] - main() - ============================================================
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:473] - main() - 配置文件: config/default_config.yaml
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:474] - main() - 测试数据根目录: /ZHANGyong/wjj/dataset
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:475] - main() - 标注文件: /ZHANGyong/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:476] - main() - 数据集类型: auto
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:477] - main() - 输出目录: results
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:482] - main() - ✅ 配置加载成功
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:120] - load_test_data() - 加载测试数据: /ZHANGyong/wjj/dataset
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:121] - load_test_data() - 标注文件: /ZHANGyong/wjj/dataset/FSC_147/annotation_FSC147_384_with_gt.json
+2026-01-25 20:54:26 - INFO - [test_pipeline.py:122] - load_test_data() - 数据集类型: auto
+2026-01-25 20:54:27 - INFO - [test_pipeline.py:127] - load_test_data() - 自动检测到格式: fsc147_json
+2026-01-25 20:54:28 - INFO - [test_pipeline.py:181] - load_test_data() - ✅ 加载完成，共 6054 张图像
+2026-01-25 20:54:28 - INFO - [test_pipeline.py:81] - load_model_checkpoints() - 加载PointDecoder权重: /ZHANGyong/wjj/PseCo-main/data/fsc147/checkpoints/point_decoder_vith_v5.pth
+2026-01-25 20:54:29 - WARNING - [test_pipeline.py:102] - load_model_checkpoints() - ROIHead目录不存在: /ZHANGyong/wjj/PseCo-main/data/fsc147/checkpoints/cls_head/ckpt/MLP_small_box_w1
+2026-01-25 20:54:56 - INFO - [test_pipeline.py:206] - run_inference() - ============================================================
+2026-01-25 20:54:56 - INFO - [test_pipeline.py:207] - run_inference() - 开始推理
+2026-01-25 20:54:56 - INFO - [test_pipeline.py:208] - run_inference() - ============================================================
+2026-01-25 20:59:33 - INFO - [test_pipeline.py:220] - run_inference() - 加载SAM模型: /ZHANGyong/wjj/Prompt_sam_localization/checkpoint/sam_vit_h_4b8939.pth (arch: vith)
+2026-01-25 21:04:41 - INFO - [test_pipeline.py:227] - run_inference() - 加载PointDecoder模型
+2026-01-25 21:05:01 - INFO - [test_pipeline.py:237] - run_inference() - 加载ROIHead模型
+2026-01-25 21:05:34 - INFO - [test_pipeline.py:250] - run_inference() - 加载CLIP文本提示: /ZHANGyong/wjj/PseCo-main/data/fsc147/clip_text_prompt.pth
+2026-01-25 21:06:30 - INFO - [test_pipeline.py:261] - run_inference() - 加载预处理数据
+2026-01-25 21:10:19 - INFO - [test_pipeline.py:269] - run_inference() - 开始处理 6054 张图像
+2026-01-25 21:14:07 - INFO - [test_pipeline.py:313] - run_inference() - ✅ 推理完成，处理了 6054 张图像
+2026-01-25 21:14:07 - INFO - [test_pipeline.py:336] - evaluate_results() - ============================================================
+2026-01-25 21:14:07 - INFO - [test_pipeline.py:337] - evaluate_results() - 开始评估
+2026-01-25 21:14:07 - INFO - [test_pipeline.py:338] - evaluate_results() - ============================================================
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:392] - evaluate_results() - ============================================================
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:393] - evaluate_results() - 评估结果:
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:394] - evaluate_results() - ============================================================
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:395] - evaluate_results() -   MAE (平均绝对误差): 78.3043
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:396] - evaluate_results() -   RMSE (均方根误差): 117.0013
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:397] - evaluate_results() -   NAE (归一化平均误差): 3.1281
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:398] - evaluate_results() -   SRE (平方相对误差): 19.6460
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:399] - evaluate_results() -   总图像数: 6054
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:400] - evaluate_results() - ============================================================
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:401] - evaluate_results() - 结果已保存到: results/inference_results.json
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:519] - main() - ============================================================
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:520] - main() - ✅ 推理测试完成
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:521] - main() -   日志文件: logs/test_log_20260125_205426.txt
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:522] - main() -   结果目录: results
+2026-01-25 21:14:08 - INFO - [test_pipeline.py:523] - main() - ============================================================
